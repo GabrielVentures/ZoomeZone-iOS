@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8F2EEF3C2EA9E8D400CE0F89 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF3B2EA9E8D400CE0F89 /* FirebaseAuth */; };
+		8F2EEF3E2EA9E8D400CE0F89 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF3D2EA9E8D400CE0F89 /* FirebaseCore */; };
+		8F2EEF402EA9E8D400CE0F89 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF3F2EA9E8D400CE0F89 /* FirebaseCrashlytics */; };
+		8F2EEF422EA9E8D400CE0F89 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF412EA9E8D400CE0F89 /* FirebaseDatabase */; };
+		8F2EEF442EA9E8D400CE0F89 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF432EA9E8D400CE0F89 /* FirebaseFirestore */; };
+		8F2EEF462EA9E8D400CE0F89 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF452EA9E8D400CE0F89 /* FirebaseStorage */; };
+		8F4CA9732EAB4E77007748BB /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8F4CA9722EAB4E77007748BB /* ZIPFoundation */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8F0AEAA72EA9237F0062C04B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,7 +34,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		8F0AEA992EA9237E0062C04B /* ShelfTagSnap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShelfTagSnap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F0AEA992EA9237E0062C04B /* Zoom Zone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Zoom Zone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F0AEAA62EA9237F0062C04B /* ShelfTagSnapTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShelfTagSnapTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F0AEAB02EA923800062C04B /* ShelfTagSnapUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShelfTagSnapUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -52,6 +62,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F2EEF402EA9E8D400CE0F89 /* FirebaseCrashlytics in Frameworks */,
+				8F2EEF3E2EA9E8D400CE0F89 /* FirebaseCore in Frameworks */,
+				8F2EEF422EA9E8D400CE0F89 /* FirebaseDatabase in Frameworks */,
+				8F2EEF442EA9E8D400CE0F89 /* FirebaseFirestore in Frameworks */,
+				8F2EEF3C2EA9E8D400CE0F89 /* FirebaseAuth in Frameworks */,
+				8F2EEF462EA9E8D400CE0F89 /* FirebaseStorage in Frameworks */,
+				8F4CA9732EAB4E77007748BB /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,7 +102,7 @@
 		8F0AEA9A2EA9237E0062C04B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8F0AEA992EA9237E0062C04B /* ShelfTagSnap.app */,
+				8F0AEA992EA9237E0062C04B /* Zoom Zone.app */,
 				8F0AEAA62EA9237F0062C04B /* ShelfTagSnapTests.xctest */,
 				8F0AEAB02EA923800062C04B /* ShelfTagSnapUITests.xctest */,
 			);
@@ -112,9 +129,16 @@
 			);
 			name = ShelfTagSnap;
 			packageProductDependencies = (
+				8F2EEF3B2EA9E8D400CE0F89 /* FirebaseAuth */,
+				8F2EEF3D2EA9E8D400CE0F89 /* FirebaseCore */,
+				8F2EEF3F2EA9E8D400CE0F89 /* FirebaseCrashlytics */,
+				8F2EEF412EA9E8D400CE0F89 /* FirebaseDatabase */,
+				8F2EEF432EA9E8D400CE0F89 /* FirebaseFirestore */,
+				8F2EEF452EA9E8D400CE0F89 /* FirebaseStorage */,
+				8F4CA9722EAB4E77007748BB /* ZIPFoundation */,
 			);
 			productName = ShelfTagSnap;
-			productReference = 8F0AEA992EA9237E0062C04B /* ShelfTagSnap.app */;
+			productReference = 8F0AEA992EA9237E0062C04B /* Zoom Zone.app */;
 			productType = "com.apple.product-type.application";
 		};
 		8F0AEAA52EA9237F0062C04B /* ShelfTagSnapTests */ = {
@@ -195,6 +219,10 @@
 			);
 			mainGroup = 8F0AEA902EA9237E0062C04B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				8F4CA9712EAB4E77007748BB /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8F0AEA9A2EA9237E0062C04B /* Products */;
 			projectDirPath = "";
@@ -393,10 +421,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MV673DPGL5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to scan shelf label barcodes and capture product photos.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to record where each scan was taken, helping you organize store inventory.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need permission to save scanned photos to your photo library for future reference.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -407,8 +440,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = kent.sun.ShelfTagSnap;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.jetpack.pictureperfect;
+				PRODUCT_NAME = "Zoom Zone";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -424,10 +458,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MV673DPGL5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to scan shelf label barcodes and capture product photos.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to record where each scan was taken, helping you organize store inventory.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need permission to save scanned photos to your photo library for future reference.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -438,8 +477,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = kent.sun.ShelfTagSnap;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.jetpack.pictureperfect;
+				PRODUCT_NAME = "Zoom Zone";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -570,6 +610,63 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.4.0;
+			};
+		};
+		8F4CA9712EAB4E77007748BB /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.20;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8F2EEF3B2EA9E8D400CE0F89 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		8F2EEF3D2EA9E8D400CE0F89 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		8F2EEF3F2EA9E8D400CE0F89 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		8F2EEF412EA9E8D400CE0F89 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+		8F2EEF432EA9E8D400CE0F89 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		8F2EEF452EA9E8D400CE0F89 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		8F4CA9722EAB4E77007748BB /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F4CA9712EAB4E77007748BB /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8F0AEA912EA9237E0062C04B /* Project object */;
 }
