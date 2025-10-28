@@ -78,6 +78,9 @@ struct HistoryListView: View {
     @State private var exportError: String?
     @State private var exportProgress: ExportProgress?
 
+    // Date filter state
+    @State private var isDateFilterExpanded: Bool = false
+
     // MARK: - Body
 
     var body: some View {
@@ -166,8 +169,10 @@ struct HistoryListView: View {
 
         case .loaded:
             if viewModel.isEmpty {
+                // No records at all - show empty state
                 emptyView
             } else {
+                // Has records - show list (even if filtered results are empty)
                 recordsList
             }
 
@@ -284,84 +289,270 @@ struct HistoryListView: View {
     // MARK: - List Mode View
 
     private var listModeView: some View {
-        List {
-            // Statistics
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: []) {
+                // Statistics card (fixed at top)
+                StatisticsCardView(
+                    dailyStats: viewModel.dailyStats,
+                    totalCount: viewModel.dailyStats.reduce(0) { $0 + $1.count }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
 
-            statsSection
+                // Content: records list grouped by date
+                if viewModel.hasFilteredResults {
+                    ForEach(viewModel.groupedRecords) { group in
+                        VStack(spacing: 0) {
+                            // Date section header
+                            DateSectionHeader(dateGroup: group) {
+                                viewModel.toggleGroupExpansion(for: group.id)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
 
-            // Records list
+                            // Records in this date group (only show if expanded)
+                            if group.isExpanded {
+                                ForEach(group.records) { record in
+                                    scrollRecordRow(for: record)
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 8)
+                                }
+                            }
+                        }
+                    }
 
-            recordsSection
+                    // Load more indicator
+                    if viewModel.hasMoreRecords {
+                        HStack {
+                            Spacer()
+                            if viewModel.isLoadingMore {
+                                ProgressView()
+                            } else {
+                                Text("Load more")
+                                    .foregroundColor(.blue)
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical, 16)
+                        .onAppear {
+                            Task {
+                                await viewModel.loadMoreRecords()
+                            }
+                        }
+                    }
+                } else if !viewModel.searchQuery.isEmpty {
+                    // No search results
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 50))
+                            .foregroundColor(.secondary)
+                        Text("No results found for \"\(viewModel.searchQuery)\"")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                }
+            }
         }
-        .listStyle(.insetGrouped)
+        .background(Color(.systemGroupedBackground))
     }
 
     // MARK: - Gallery Mode View
 
     private var galleryModeView: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                // Statistics section
-                galleryStatsSection
+            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+                // Statistics card (fixed at top)
+                StatisticsCardView(
+                    dailyStats: viewModel.dailyStats,
+                    totalCount: viewModel.dailyStats.reduce(0) { $0 + $1.count }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
 
-                // Gallery grid
-                LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ], spacing: 12) {
-                    ForEach(viewModel.filteredRecords) { record in
-                        galleryGridItem(for: record)
+                // Content: pure waterfall grid (no day grouping)
+                if viewModel.hasFilteredResults {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ], spacing: 12) {
+                        ForEach(viewModel.filteredRecords) { record in
+                            galleryGridItem(for: record)
+                        }
+
+                        // Load more indicator
+                        if viewModel.hasMoreRecords {
+                            Color.clear
+                                .frame(height: 1)
+                                .gridCellColumns(2)
+                                .onAppear {
+                                    Task {
+                                        await viewModel.loadMoreRecords()
+                                    }
+                                }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+
+                    // Loading more indicator
+                    if viewModel.isLoadingMore {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                        .padding(.vertical, 16)
+                    }
+                } else if !viewModel.searchQuery.isEmpty {
+                    // No search results
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 50))
+                            .foregroundColor(.secondary)
+                        Text("No results found for \"\(viewModel.searchQuery)\"")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                }
+            }
+        }
+    }
+
+
+    // MARK: - Date Grouped Records Section
+
+    private var dateGroupedRecordsSection: some View {
+        ForEach(viewModel.groupedRecords) { group in
+            Section {
+                // Date section header
+                DateSectionHeader(dateGroup: group) {
+                    viewModel.toggleGroupExpansion(for: group.id)
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+
+                // Records in this date group (only show if expanded)
+                if group.isExpanded {
+                    ForEach(group.records) { record in
+                        recordRow(for: record)
                     }
                 }
             }
-            .padding()
         }
     }
 
-    // MARK: - Gallery Stats Section
+    // MARK: - Record Row
 
-    private var galleryStatsSection: some View {
-        HStack {
-            Image(systemName: "chart.bar.fill")
-                .foregroundColor(.blue)
-                .font(.subheadline)
-                .accessibilityHidden(true)
+    private func recordRow(for record: ScanRecord) -> some View {
+        Group {
+            if isSelectionMode {
+                // Selection mode: Show checkbox
+                Button {
+                    toggleSelection(for: record)
+                } label: {
+                    HStack(spacing: 12) {
+                        // Checkbox
+                        Image(systemName: selectedRecords.contains(record.id) ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(selectedRecords.contains(record.id) ? .blue : .gray)
+                            .font(.title3)
+                            .accessibilityHidden(true)
 
-            Text("\(viewModel.totalCount) \(Strings.History.totalRecords)")
-                .font(.subheadline)
-                .fontWeight(.medium)
-
-            Spacer()
-        }
-        .padding(.horizontal, 4)
-        .padding(.top, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Strings.History.recordsStatistics)
-        .accessibilityValue("\(viewModel.totalCount) \(Strings.History.totalRecords)")
-    }
-
-    // MARK: - Stats Section
-
-    private var statsSection: some View {
-        Section {
-            HStack {
-                Image(systemName: "chart.bar.fill")
-                    .foregroundColor(.blue)
-                    .accessibilityHidden(true)
-
-                Text("\(viewModel.totalCount) \(Strings.History.totalRecords)")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-
-                Spacer()
+                        HistoryRow(
+                            record: record,
+                            image: viewModel.getImage(for: record),
+                            layoutMode: layoutMode
+                        )
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+            } else {
+                // Normal mode: Tap to view details
+                Button {
+                    selectedRecord = record
+                } label: {
+                    HistoryRow(
+                        record: record,
+                        image: viewModel.getImage(for: record),
+                        layoutMode: layoutMode
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        recordToDelete = record
+                        showDeleteAlert = true
+                    } label: {
+                        Label(Strings.Common.delete, systemImage: "trash")
+                    }
+                }
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Strings.History.recordsStatistics)
-        .accessibilityValue("\(viewModel.totalCount) \(Strings.History.totalRecords)")
     }
 
-    // MARK: - Records Section
+    // MARK: - Scroll Record Row (for ScrollView layout)
+
+    private func scrollRecordRow(for record: ScanRecord) -> some View {
+        Group {
+            if isSelectionMode {
+                // Selection mode: Show checkbox
+                Button {
+                    toggleSelection(for: record)
+                } label: {
+                    HStack(spacing: 12) {
+                        // Checkbox
+                        Image(systemName: selectedRecords.contains(record.id) ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(selectedRecords.contains(record.id) ? .blue : .gray)
+                            .font(.title3)
+                            .accessibilityHidden(true)
+
+                        HistoryRow(
+                            record: record,
+                            image: viewModel.getImage(for: record),
+                            layoutMode: layoutMode
+                        )
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                }
+                .buttonStyle(PlainButtonStyle())
+            } else {
+                // Normal mode: Tap to view details + context menu for delete
+                Button {
+                    selectedRecord = record
+                } label: {
+                    HistoryRow(
+                        record: record,
+                        image: viewModel.getImage(for: record),
+                        layoutMode: layoutMode
+                    )
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .contextMenu {
+                    Button(role: .destructive) {
+                        recordToDelete = record
+                        showDeleteAlert = true
+                    } label: {
+                        Label(Strings.Common.delete, systemImage: "trash")
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Records Section (Old - Keep for reference)
 
     private var recordsSection: some View {
         Section {

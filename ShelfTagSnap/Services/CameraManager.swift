@@ -60,17 +60,17 @@ class CameraManager: NSObject, ObservableObject {
         var errorDescription: String? {
             switch self {
             case .setupFailed:
-                return "相机设置失败 / Camera setup failed"
+                return "Camera setup failed"
             case .deviceNotAvailable:
-                return "相机设备不可用 / Camera device not available"
+                return "Camera device not available"
             case .inputCreationFailed:
-                return "创建相机输入失败 / Input creation failed"
+                return "Input creation failed"
             case .addInputFailed:
-                return "添加相机输入失败 / Add input failed"
+                return "Add input failed"
             case .addOutputFailed:
-                return "添加输出失败 / Add output failed"
+                return "Add output failed"
             case .capturePhotoFailed:
-                return "拍照失败 / Capture photo failed"
+                return "Capture photo failed"
             }
         }
     }

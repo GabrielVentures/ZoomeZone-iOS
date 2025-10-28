@@ -33,14 +33,14 @@ struct CameraPreviewView: UIViewRepresentable {
     // MARK: - UIViewRepresentable
 
     func makeUIView(context: Context) -> CameraPreviewUIView {
-        print("📹 [PREVIEW] makeUIView - 创建预览视图 | Creating preview view")
+        print("📹 [PREVIEW] makeUIView - Creating preview view")
         let view = CameraPreviewUIView()
 
         // Configure preview layer
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
 
-        print("📹 [PREVIEW] Session 已设置 | Session configured")
+        print("📹 [PREVIEW] Session configured")
         print("📹 [PREVIEW] Session isRunning: \(session.isRunning)")
 
         return view
@@ -52,7 +52,7 @@ struct CameraPreviewView: UIViewRepresentable {
 
         // Only update if session actually changed (should never happen)
         if uiView.videoPreviewLayer.session !== session {
-            print("⚠️ [PREVIEW] Session 变化（异常）| Session changed (unexpected)")
+            print("⚠️ [PREVIEW] Session changed (unexpected)")
             uiView.videoPreviewLayer.session = session
         }
     }

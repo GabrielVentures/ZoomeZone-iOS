@@ -436,15 +436,27 @@ struct ZoomableImage: View {
                     }
             )
             .gesture(
+                // Only allow dragging when zoomed in (scale > 1.0)
                 DragGesture()
                     .onChanged { value in
-                        offset = CGSize(
-                            width: lastOffset.width + value.translation.width,
-                            height: lastOffset.height + value.translation.height
-                        )
+                        // Only allow drag when zoomed
+                        if scale > 1.0 {
+                            offset = CGSize(
+                                width: lastOffset.width + value.translation.width,
+                                height: lastOffset.height + value.translation.height
+                            )
+                        }
                     }
                     .onEnded { _ in
-                        lastOffset = offset
+                        if scale > 1.0 {
+                            lastOffset = offset
+                        } else {
+                            // Reset offset if not zoomed
+                            withAnimation(.spring()) {
+                                offset = .zero
+                                lastOffset = .zero
+                            }
+                        }
                     }
             )
             .onTapGesture(count: 2) {
@@ -483,7 +495,7 @@ struct ShareSheet: UIViewControllerRepresentable {
             merchant: "walmart",
             barcode: "1234567890123",
             location: CLLocation(latitude: 37.7749, longitude: -122.4194),
-            storeLocation: "一楼入口 / Floor 1 entrance",
+            storeLocation: "Floor 1 entrance",
             imageFilename: "test.jpg"
         )
     )

@@ -183,11 +183,12 @@ class LocalStorageService {
     /// - Returns: Image URL
     /// - Throws: StorageError
     func saveImage(_ image: UIImage, filename: String) throws -> URL {
-        // Optimization: Resize image to save storage and memory
-        let maxDimension: CGFloat = 1920 // 1080p is sufficient for barcode capturing
+        // Optimization: Balanced for print quality and file size
+        // 900px @ 58% quality → 200-500KB (perfect for reports & email)
+        let maxDimension: CGFloat = 900
         let resizedImage = resizeImage(image, maxDimension: maxDimension)
 
-        guard let data = resizedImage.jpegData(compressionQuality: 0.85) else {
+        guard let data = resizedImage.jpegData(compressionQuality: 0.58) else {
             throw StorageError.encodingFailed
         }
 

@@ -38,11 +38,11 @@ struct BarcodeDetectionResult {
         var description: String {
             switch self {
             case .tooFar:
-                return "请靠近条形码 / Move closer to barcode"
+                return "Move closer to barcode"
             case .optimal:
-                return "距离合适 / Distance optimal"
+                return "Distance optimal"
             case .tooClose:
-                return "请后退一些 / Move back a bit"
+                return "Move back a bit"
             }
         }
     }
@@ -61,7 +61,7 @@ class BarcodeDetector {
     private var lastDetectionTime: Date?
     private var lastDetectedBarcode: String?
 
-    private let debounceInterval: TimeInterval = 0.5
+    private let debounceInterval: TimeInterval = 0.2  // Reduced from 0.5s for faster detection
 
     // MARK: - Detection
 
@@ -84,16 +84,41 @@ class BarcodeDetector {
             self.processDetectionResults(request.results)
         }
 
-        // Supported barcode symbologies
+        // Supported barcode symbologies - Comprehensive support for all retail/industrial formats
         request.symbologies = [
-            .EAN13,
-            .EAN8,
-            .UPCE,
-            .Code128,
-            .Code39,
-            .Code93,
-            .ITF14,
-            .QR
+            // EAN formats (International retail standard)
+            // Note: EAN-13 also detects UPC-A (12-digit US barcodes are compatible with EAN-13)
+            .ean13,             // EAN-13 (13 digits) - Also detects UPC-A (12 digits)
+            .ean8,              // EAN-8 (8 digits) - Small item format
+
+            // UPC formats (North America retail standard)
+            .upce,              // UPC-E (8 digits) - Compressed UPC for small items
+
+            // Code formats (Industrial/logistics)
+            .code128,           // Code 128 - Logistics, shipping labels
+            .code39,            // Code 39 - Industrial, government
+            .code39Checksum,    // Code 39 with checksum
+            .code39FullASCII,   // Code 39 Full ASCII
+            .code93,            // Code 93 - Compact version of Code 39
+            .code93i,           // Code 93i extension
+
+            // Interleaved 2 of 5 formats
+            .i2of5,             // Interleaved 2 of 5
+            .i2of5Checksum,     // Interleaved 2 of 5 with checksum
+            .itf14,             // ITF-14 (14 digits) - Carton/case codes
+
+            // GS1 DataBar (Modern retail/pharmaceutical)
+            .gs1DataBar,        // GS1 DataBar Omnidirectional
+            .gs1DataBarExpanded,// GS1 DataBar Expanded
+            .gs1DataBarLimited, // GS1 DataBar Limited
+
+            // 2D barcodes
+            .qr,                // QR Code
+            .aztec,             // Aztec Code
+            .pdf417,            // PDF417 - Government IDs, boarding passes
+            .dataMatrix,        // Data Matrix - Small items, electronics
+            .microQR,           // Micro QR Code
+            .microPDF417        // Micro PDF417
         ]
 
         // Perform request
@@ -148,15 +173,14 @@ class BarcodeDetector {
     // MARK: - Distance Calculation
 
     /// Calculate distance level from bounding box size
-
     private func calculateDistanceLevel(from boundingBox: CGRect) -> BarcodeDetectionResult.DistanceLevel {
-
         // Use bounding box area as distance estimate
         let area = boundingBox.width * boundingBox.height
 
-        // Define thresholds (can be adjusted based on real-world testing)
-        let tooSmallThreshold: CGFloat = 0.02
-        let tooLargeThreshold: CGFloat = 0.5
+        // Adjusted thresholds for real-world shelf tags (much smaller barcodes)
+        // Real shelf tag barcodes can be as small as 0.005-0.01 (0.5-1% of frame)
+        let tooSmallThreshold: CGFloat = 0.005  // Lowered from 0.02 to support small shelf tags
+        let tooLargeThreshold: CGFloat = 0.6    // Increased from 0.5 for more tolerance
 
         if area < tooSmallThreshold {
             return .tooFar

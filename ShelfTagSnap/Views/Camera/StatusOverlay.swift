@@ -17,20 +17,31 @@ struct StatusOverlay: View {
     let isLowLight: Bool
     let distanceLevel: BarcodeDetectionResult.DistanceLevel?
 
+    // MARK: - State
+
+    @State private var animationScale: CGFloat = 1.0
+    @State private var checkmarkRotation: Double = -90
+    @State private var savedTextOpacity: Double = 0
+    @State private var savedTextScale: CGFloat = 0.5
+
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
+            VStack(spacing: 0) {
 
-            // Top status bar
-            topStatusBar
+                // Top status bar
+                topStatusBar
 
-            Spacer()
+                Spacer()
 
-            // Bottom distance indicator (if needed)
-            if let distanceHint = getDistanceHint() {
-                distanceIndicator(distanceHint)
-                    .padding(.bottom, 120)
+                // Bottom distance indicator removed per user request
+                // Distance hints are now shown only in top status bar if needed
+            }
+
+            // Success animation (center) - "Echo/Wave Effect"
+            if scanState == .completed {
+                successAnimation
             }
         }
         .ignoresSafeArea()
@@ -173,6 +184,87 @@ struct StatusOverlay: View {
             accessibilityHint: Strings.Camera.distanceOptimalHint
         )
     }
+
+    // MARK: - Success Animation
+
+    /// Success animation with "echo/wave effect" as requested by client
+    /// Enhanced with rotation, staggered timing, and layered feedback
+    private var successAnimation: some View {
+        VStack(spacing: 20) {
+            // Green wave circles (echo effect) - 3 layers
+            ZStack {
+                // Multiple expanding circles for wave effect
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .stroke(Color.green, lineWidth: 4)
+                        .frame(width: 100, height: 100)
+                        .scaleEffect(animationScale)
+                        .opacity(2.0 - animationScale)
+                        .animation(
+                            Animation.easeOut(duration: 0.8)
+                                .delay(Double(index) * 0.1),
+                            value: animationScale
+                        )
+                }
+
+                // Center checkmark icon with rotation
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.green)
+                    .scaleEffect(animationScale > 1.3 ? 1.2 : animationScale)
+                    .rotationEffect(.degrees(checkmarkRotation))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: animationScale)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: checkmarkRotation)
+            }
+
+            // "✓ Saved" text with separate opacity and scale
+            Text("✓ Saved")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .padding(.horizontal, 30)
+                .padding(.vertical, 12)
+                .background(
+                    Capsule()
+                        .fill(Color.green)
+                )
+                .shadow(color: .green.opacity(0.5), radius: 10, x: 0, y: 5)
+                .scaleEffect(savedTextScale)
+                .opacity(savedTextOpacity)
+                .animation(.spring(response: 0.35, dampingFraction: 0.65).delay(0.2), value: savedTextScale)
+                .animation(.easeOut(duration: 0.3).delay(0.2), value: savedTextOpacity)
+        }
+        .onAppear {
+            // Trigger animations with staggered timing
+            // Layer 1: Wave circles expand immediately
+            withAnimation {
+                animationScale = 2.0
+            }
+
+            // Layer 2: Checkmark rotates in (slight delay)
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(0.1)) {
+                checkmarkRotation = 0
+            }
+
+            // Layer 3: "Saved" text appears (delayed)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.65).delay(0.2)) {
+                savedTextScale = 1.0
+            }
+            withAnimation(.easeOut(duration: 0.3).delay(0.2)) {
+                savedTextOpacity = 1.0
+            }
+        }
+        .onDisappear {
+            // Reset animation states
+            animationScale = 1.0
+            checkmarkRotation = -90
+            savedTextOpacity = 0
+            savedTextScale = 0.5
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Scan saved successfully")
+        .accessibilityAddTraits(.updatesFrequently)
+    }
 }
 
 // MARK: - Preview
@@ -181,7 +273,7 @@ struct StatusOverlay: View {
     ZStack {
         Color.black
         StatusOverlay(
-            message: "对准条形码 / Align barcode",
+            message: "Align barcode",
             scanState: .scanning,
             isLowLight: false,
             distanceLevel: nil
@@ -193,7 +285,7 @@ struct StatusOverlay: View {
     ZStack {
         Color.black
         StatusOverlay(
-            message: "扫描中 / Scanning...",
+            message: "Scanning...",
             scanState: .scanning,
             isLowLight: true,
             distanceLevel: nil
@@ -205,7 +297,7 @@ struct StatusOverlay: View {
     ZStack {
         Color.black
         StatusOverlay(
-            message: "请靠近 / Move closer",
+            message: "Move closer",
             scanState: .scanning,
             isLowLight: false,
             distanceLevel: .tooFar
@@ -217,7 +309,7 @@ struct StatusOverlay: View {
     ZStack {
         Color.black
         StatusOverlay(
-            message: "请后退 / Move back",
+            message: "Move back",
             scanState: .scanning,
             isLowLight: false,
             distanceLevel: .tooClose

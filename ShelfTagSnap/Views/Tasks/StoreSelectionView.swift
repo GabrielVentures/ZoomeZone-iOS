@@ -26,6 +26,9 @@ struct StoreSelectionView: View {
     @State private var showCameraWithStore: Store?
     @FocusState private var isSearchFieldFocused: Bool
 
+    // UserDefaults key for last selected store
+    private let lastSelectedStoreKey = "LastSelectedStoreName"
+
     // MARK: - Hot Stores
 
     private let hotStores: [Store] = [
@@ -281,12 +284,29 @@ struct StoreSelectionView: View {
                 permissionManager: permissionManager
             )
         }
+        .onAppear {
+            loadLastSelectedStore()
+        }
     }
 
     // MARK: - Methods
 
+    /// Load last selected store from UserDefaults
+    private func loadLastSelectedStore() {
+        if let lastStoreName = UserDefaults.standard.string(forKey: lastSelectedStoreKey),
+           let store = Store.allStores.first(where: { $0.name == lastStoreName }) {
+            // Auto-fill last selected store
+            searchText = store.name
+            selectedStore = store
+        }
+    }
+
+    /// Save selected store and proceed to camera
     private func validateAndProceed() {
         if let store = selectedStore {
+            // Save selected store name to UserDefaults
+            UserDefaults.standard.set(store.name, forKey: lastSelectedStoreKey)
+
             showCameraWithStore = store
         } else if !searchText.isEmpty {
             showValidationError = true

@@ -127,7 +127,7 @@ struct LoadingButton: View {
     VStack(spacing: 20) {
         // Primary
         LoadingButton(
-            title: "登录 / Sign In",
+            title: "Sign In",
             style: .primary,
             iconName: "arrow.right.circle.fill"
         ) {
@@ -136,7 +136,7 @@ struct LoadingButton: View {
 
         // Loading
         LoadingButton(
-            title: "登录中... / Signing In...",
+            title: "Signing In...",
             isLoading: true,
             style: .primary
         ) {
@@ -145,7 +145,7 @@ struct LoadingButton: View {
 
         // Disabled
         LoadingButton(
-            title: "登录 / Sign In",
+            title: "Sign In",
             isDisabled: true,
             style: .primary
         ) {
@@ -154,7 +154,7 @@ struct LoadingButton: View {
 
         // Secondary
         LoadingButton(
-            title: "取消 / Cancel",
+            title: "Cancel",
             style: .secondary
         ) {
             print("Cancel tapped")
@@ -162,7 +162,7 @@ struct LoadingButton: View {
 
         // Destructive
         LoadingButton(
-            title: "删除账户 / Delete Account",
+            title: "Delete Account",
             style: .destructive,
             iconName: "trash.fill"
         ) {

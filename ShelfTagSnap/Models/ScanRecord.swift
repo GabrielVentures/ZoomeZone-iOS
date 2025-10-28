@@ -36,7 +36,6 @@ struct ScanRecord: Codable, Identifiable, Hashable {
 
     /// Create a new scan record
     /// - Parameters:
-
     init(
         username: String,
         merchant: String,
@@ -55,6 +54,31 @@ struct ScanRecord: Codable, Identifiable, Hashable {
         self.imageFilename = imageFilename
         self.storeLocation = storeLocation
         self.isSynced = false
+    }
+
+    /// Create from all fields (for conversion)
+    init(
+        id: String,
+        username: String,
+        timestamp: Date,
+        merchant: String,
+        barcode: String,
+        latitude: Double?,
+        longitude: Double?,
+        imageFilename: String,
+        storeLocation: String?,
+        isSynced: Bool
+    ) {
+        self.id = id
+        self.username = username
+        self.timestamp = timestamp
+        self.merchant = merchant
+        self.barcode = barcode
+        self.latitude = latitude
+        self.longitude = longitude
+        self.imageFilename = imageFilename
+        self.storeLocation = storeLocation
+        self.isSynced = isSynced
     }
 
     // MARK: - Computed Properties

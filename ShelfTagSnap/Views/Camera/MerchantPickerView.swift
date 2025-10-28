@@ -30,7 +30,7 @@ struct MerchantPickerView: View {
 
                     // Title description
                     VStack(spacing: 8) {
-                        Text("选择商家")
+                        Text("Select Merchant")
                             .font(.title2)
                             .fontWeight(.bold)
 
@@ -38,7 +38,7 @@ struct MerchantPickerView: View {
                             .font(.title3)
                             .foregroundColor(.secondary)
 
-                        Text("请选择您扫描的商家")
+                        Text("Please select the merchant you scanned")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 

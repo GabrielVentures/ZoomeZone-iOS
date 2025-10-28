@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import FirebaseCore
 
 /// App /// App entry point
@@ -14,11 +15,14 @@ import FirebaseCore
 struct ShelfTagSnapApp: App {
     // MARK: - State Objects
 
- /// Firebase     /// Firebase manager
+    /// Firebase manager
     @StateObject private var firebaseManager = FirebaseManager.shared
 
     /// Permission manager
     @StateObject private var permissionManager = PermissionManager.shared
+
+    /// SwiftData service
+    private let swiftDataService = SwiftDataService.shared
 
     // MARK: - Initialization
 
@@ -28,6 +32,9 @@ struct ShelfTagSnapApp: App {
 
         // Configure appearance
         configureAppearance()
+
+        // Initialize SwiftData (already initialized in service)
+        print("[App] ✅ SwiftData initialized")
     }
 
     // MARK: - Body
@@ -37,6 +44,7 @@ struct ShelfTagSnapApp: App {
             ContentView()
                 .environmentObject(firebaseManager)
                 .environmentObject(permissionManager)
+                .modelContainer(swiftDataService.container)
                 .preferredColorScheme(.light) // Force light mode for now
         }
     }

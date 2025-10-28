@@ -80,6 +80,7 @@ struct CameraView: View {
                 ScanResultView(
                     photo: photo,
                     barcode: barcode,
+                    barcodeSymbology: viewModel.detectedSymbology,
                     merchant: merchant,
                     storeLocation: $viewModel.storeLocation,
                     onSave: {
@@ -130,13 +131,13 @@ struct CameraView: View {
         .onDisappear {
             viewModel.reset()
         }
-        .alert("需要相机权限 / Camera Permission Required", isPresented: $showPermissionAlert) {
-            Button("打开设置 / Open Settings") {
+        .alert("Camera Permission Required", isPresented: $showPermissionAlert) {
+            Button("Open Settings") {
                 permissionManager.openAppSettings()
             }
-            Button("取消 / Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("请在设置中允许访问相机以使用扫描功能。\nPlease allow camera access in Settings to use scanning feature.")
+            Text("Please allow camera access in Settings to use scanning feature.")
         }
     }
 
@@ -150,7 +151,7 @@ struct CameraView: View {
                 .accessibilityHidden(true)
 
             VStack(spacing: 12) {
-                Text("需要相机权限")
+                Text("Camera Permission Required")
                     .font(.title)
                     .fontWeight(.bold)
 
@@ -158,7 +159,7 @@ struct CameraView: View {
                     .font(.title3)
                     .foregroundColor(.secondary)
 
-                Text("扫描条形码需要访问相机")
+                Text("Scanning barcodes requires camera access")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -169,19 +170,19 @@ struct CameraView: View {
                     .multilineTextAlignment(.center)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("需要相机权限 / Camera Permission Required")
-            .accessibilityValue("扫描条形码需要访问相机 / Scanning barcodes requires camera access")
+            .accessibilityLabel("Camera Permission Required")
+            .accessibilityValue("Scanning barcodes requires camera access / Scanning barcodes requires camera access")
 
             LoadingButton(
-                title: "打开设置 / Open Settings",
+                title: "Open Settings",
                 style: .primary,
                 iconName: "gear"
             ) {
                 permissionManager.openAppSettings()
             }
             .frame(maxWidth: 300)
-            .accessibilityLabel("打开设置以授予相机权限 / Open Settings to grant camera permission")
-            .accessibilityHint("打开系统设置页面 / Opens system settings page")
+            .accessibilityLabel("Open Settings to grant camera permission")
+            .accessibilityHint("Opens system settings page")
         }
         .padding()
     }

@@ -57,6 +57,7 @@ enum Strings {
         static let scanning = "Scanning..."
         static let scanArea = "Scan area"
         static let cameraScanning = "Camera is scanning for barcodes"
+        static let scanCounter = "Scan counter"
 
         // Modal messages
         static let initializingCamera = "Initializing Camera"

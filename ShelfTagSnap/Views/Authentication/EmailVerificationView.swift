@@ -382,7 +382,7 @@ struct EmailVerificationView: View {
     private func startAutoVerificationCheck() {
         guard !firebaseManager.isEmailVerified else { return }
 
-        print("✅ [EmailVerificationView] 开始自动验证检查 (每\(autoCheckInterval)秒)")
+        print("✅ [EmailVerificationView] Starting auto-verification check (every\(autoCheckInterval) seconds)")
 
         verificationTimer = Timer.scheduledTimer(withTimeInterval: autoCheckInterval, repeats: true) { _ in
 
@@ -411,7 +411,7 @@ struct EmailVerificationView: View {
         verificationTimer?.invalidate()
         verificationTimer = nil
         progress = 0
-        print("⏹️ [EmailVerificationView] 停止自动验证检查")
+        print("⏹️ [EmailVerificationView] Stopping auto-verification check")
     }
 }
 

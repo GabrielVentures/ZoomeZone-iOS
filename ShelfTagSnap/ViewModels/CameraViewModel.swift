@@ -10,6 +10,7 @@ import SwiftUI
 import AVFoundation
 import CoreLocation
 import Combine
+import Vision
 
 /// Camera view model managing scan flow
 @MainActor
@@ -21,6 +22,9 @@ class CameraViewModel: ObservableObject {
 
     /// Currently detected barcode
     @Published var detectedBarcode: String?
+
+    /// Detected barcode symbology (format type)
+    @Published var detectedSymbology: VNBarcodeSymbology?
 
     /// Currently captured photo
     @Published var capturedPhoto: UIImage?
@@ -55,12 +59,16 @@ class CameraViewModel: ObservableObject {
     /// Current distance level
     @Published var currentDistanceLevel: BarcodeDetectionResult.DistanceLevel?
 
+    /// Session scan counter (resets when camera closes)
+    @Published var sessionScanCount: Int = 0
+
     // MARK: - Dependencies
 
     private let cameraManager: CameraManager
     private let barcodeDetector: BarcodeDetector
     private let permissionManager: PermissionManager
-    private let storageService: LocalStorageService
+    private let storageService: LocalStorageService  // Keep for backward compatibility
+    private let recordStorageService: RecordStorageService  // New SwiftData service
     private let firebaseManager: FirebaseManager
 
     // MARK: - Private Properties
@@ -127,6 +135,7 @@ class CameraViewModel: ObservableObject {
         barcodeDetector: BarcodeDetector? = nil,
         permissionManager: PermissionManager = .shared,
         storageService: LocalStorageService = .shared,
+        recordStorageService: RecordStorageService = .shared,
         firebaseManager: FirebaseManager = .shared,
         preselectedStoreName: String? = nil
     ) {
@@ -139,6 +148,7 @@ class CameraViewModel: ObservableObject {
 
         self.permissionManager = permissionManager
         self.storageService = storageService
+        self.recordStorageService = recordStorageService
         self.firebaseManager = firebaseManager
         self.preselectedStoreName = preselectedStoreName
 
@@ -248,19 +258,21 @@ class CameraViewModel: ObservableObject {
             return
         }
 
-        // Check distance
+        // Check distance - relaxed for real-world shelf tags
         switch result.distanceLevel {
         case .tooFar:
+            // Show hint but still allow detection for small shelf tags
             statusMessage = result.distanceLevel.description
-            return
+            // Don't return - proceed with detection
 
         case .tooClose:
+            // Only block if too close (blurry)
             statusMessage = result.distanceLevel.description
             return
 
         case .optimal:
-            // Distance is optimal, proceed
-            break
+            // Distance is optimal
+            statusMessage = nil
         }
 
         // Check if barcode already exists in database (unless user allowed duplicate)
@@ -288,6 +300,7 @@ class CameraViewModel: ObservableObject {
 
         // Update state
         detectedBarcode = result.barcodeValue
+        detectedSymbology = result.symbology
         scanState = .detected(result.barcodeValue)
         statusMessage = "Barcode detected"
 
@@ -355,35 +368,79 @@ class CameraViewModel: ObservableObject {
             capturedPhoto = photo
 
             // Haptic feedback - photo captured
-            HapticFeedbackManager.shared.medium()
+            HapticFeedbackManager.shared.success()
 
-            // Stop scanning
-            stopScanning()
-
-            // Check if there's a preselected store
-            if let storeName = preselectedStoreName {
-                // Preselected store: skip merchant selection, use preselected store name directly
-                storeLocation = storeName
-
-                // Set a default merchant (required by current architecture)
-                selectedMerchant = .walmart  // TODO: store merchant
-
-                // Show result confirmation directly
-                scanState = .confirming
-                statusMessage = "Confirm scan result"
-                showResultConfirmation = true
-            } else {
-                // No preselected store: show merchant picker
-                scanState = .confirming
-                statusMessage = "Please select merchant"
-                showMerchantPicker = true
-            }
+            // Auto-save immediately (no confirmation screen)
+            await saveScanRecordAutomatically()
 
         } catch {
             // Haptic feedback - capture error
             HapticFeedbackManager.shared.error()
 
             errorMessage = "Photo capture failed: \(error.localizedDescription)"
+            resetToScanning()
+        }
+    }
+
+    /// Save scan record automatically without confirmation
+    private func saveScanRecordAutomatically() async {
+        guard let barcode = detectedBarcode,
+              let photo = capturedPhoto,
+              let user = firebaseManager.currentUser else {
+            errorMessage = "Missing required information"
+            resetToScanning()
+            return
+        }
+
+        // Use preselected store name or default
+        let storeName = preselectedStoreName ?? "Unknown Store"
+        let defaultMerchant = Merchant.walmart  // Default merchant
+
+        scanState = .saving
+        statusMessage = "Saving..."
+
+        do {
+            // Get GPS location (optional)
+            var location: CLLocation?
+            if permissionManager.locationAuthorized {
+                do {
+                    location = try await permissionManager.getCurrentLocation()
+                } catch {
+                    print("Failed to get location: \(error.localizedDescription)")
+                    // Location failure doesn't prevent saving
+                }
+            }
+
+            // Save using RecordStorageService (SwiftData)
+            _ = try await recordStorageService.saveScanRecord(
+                username: user.username,
+                merchant: defaultMerchant.rawValue,
+                barcode: barcode,
+                location: location,
+                storeLocation: storeName,
+                image: photo
+            )
+
+            // Save successful
+            scanState = .completed
+            statusMessage = "✓ Saved successfully"
+
+            // Increment session counter
+            sessionScanCount += 1
+
+            // Haptic feedback - save success
+            HapticFeedbackManager.shared.success()
+
+            // Reset after 1 second (auto-continue scanning)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.resetToScanning()
+            }
+
+        } catch {
+            // Haptic feedback - save error
+            HapticFeedbackManager.shared.error()
+
+            errorMessage = "Save failed: \(error.localizedDescription)"
             resetToScanning()
         }
     }
@@ -426,36 +483,18 @@ class CameraViewModel: ObservableObject {
                 }
             }
 
-            // Generate photo filename: {username}_{timestamp}_{storeName}.jpg
-            let timestamp = Date().timeIntervalSince1970
-
-            // Clean store name for filename (replace special characters)
+            // Determine store name
             let storeName = storeLocation.isEmpty ? merchant.rawValue : storeLocation
-            let cleanStoreName = storeName
-                .replacingOccurrences(of: "/", with: "_")
-                .replacingOccurrences(of: " ", with: "_")
-                .replacingOccurrences(of: ":", with: "-")
-                .replacingOccurrences(of: "\\", with: "_")
 
-            let imageFilename = "\(user.username)_\(Int(timestamp))_\(cleanStoreName).jpg"
-
-            // Save photo
-            _ = try storageService.saveImage(photo, filename: imageFilename)
-
-            // Create scan record
-            let record = ScanRecord(
+            // Save using RecordStorageService (SwiftData)
+            _ = try await recordStorageService.saveScanRecord(
                 username: user.username,
                 merchant: merchant.rawValue,
                 barcode: barcode,
                 location: location,
-                storeLocation: storeLocation.isEmpty ? nil : storeLocation,
-                imageFilename: imageFilename
+                storeLocation: storeLocation.isEmpty ? nil : storeName,
+                image: photo
             )
-
-            // Save locally
-            var records = (try? storageService.loadRecords()) ?? []
-            records.append(record)
-            try storageService.saveRecords(records)
 
             // TODO: Phase 4 - Sync to Firebase
 
@@ -491,6 +530,7 @@ class CameraViewModel: ObservableObject {
     /// Reset to scanning state
     private func resetToScanning() {
         detectedBarcode = nil
+        detectedSymbology = nil
         capturedPhoto = nil
         selectedMerchant = nil
         storeLocation = ""
@@ -510,6 +550,7 @@ class CameraViewModel: ObservableObject {
     func reset() {
         stopScanning()
         detectedBarcode = nil
+        detectedSymbology = nil
         capturedPhoto = nil
         selectedMerchant = nil
         storeLocation = ""
@@ -522,6 +563,7 @@ class CameraViewModel: ObservableObject {
         currentDistanceLevel = nil
         lastDetectedBarcodeData = nil
         allowDuplicateOverride = false
+        sessionScanCount = 0
         barcodeDetector.reset()
     }
 }

@@ -182,11 +182,11 @@ class PermissionManager: NSObject, ObservableObject {
         var errorDescription: String? {
             switch self {
             case .unauthorized:
-                return "位置权限未授权 / Location permission not authorized"
+                return "Location permission not authorized"
             case .timeout:
-                return "获取位置超时 / Location request timeout"
+                return "Location request timeout"
             case .failed(let error):
-                return "获取位置失败 / Location failed: \(error.localizedDescription)"
+                return "Location failed: \(error.localizedDescription)"
             }
         }
     }

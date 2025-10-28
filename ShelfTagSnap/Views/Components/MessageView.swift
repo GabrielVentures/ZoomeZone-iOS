@@ -147,24 +147,24 @@ extension MessageView {
 
 #Preview("Message Types") {
     VStack(spacing: 20) {
-        MessageView.error("登录失败，请检查您的邮箱和密码 / Sign in failed. Please check your email and password") {
+        MessageView.error("Sign in failed. Please check your email and password") {
             print("Error dismissed")
         }
 
-        MessageView.success("注册成功！欢迎使用 ShelfTagSnap / Sign up successful! Welcome to ShelfTagSnap") {
+        MessageView.success("Sign up successful! Welcome to ShelfTagSnap") {
             print("Success dismissed")
         }
 
-        MessageView.warning("您的密码强度较弱，建议使用更复杂的密码 / Your password is weak. Consider using a stronger password") {
+        MessageView.warning("Your password is weak. Consider using a stronger password") {
             print("Warning dismissed")
         }
 
-        MessageView.info("密码重置邮件已发送，请检查您的收件箱 / Password reset email sent. Please check your inbox") {
+        MessageView.info("Password reset email sent. Please check your inbox") {
             print("Info dismissed")
         }
 
         MessageView(
-            message: "这是一条没有关闭按钮的消息 / This is a message without a dismiss button",
+            message: "This is a message without a dismiss button",
             type: .info,
             showDismissButton: false
         )

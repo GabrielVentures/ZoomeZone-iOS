@@ -124,7 +124,7 @@ struct CameraModalView: View {
 
                     // Close button
                     Button(action: {
-                        print("🔙 [CAMERA_MODAL] 用户点击关闭 | User tapped close")
+                        print("🔙 [CAMERA_MODAL] User tapped close")
                         dismiss()
                     }) {
                         Image(systemName: "xmark")
@@ -144,6 +144,20 @@ struct CameraModalView: View {
                 Spacer()
             }
 
+            // Counter badge (bottom-right floating badge)
+            if permissionManager.cameraAuthorized && isInitialized {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        CounterBadge(count: viewModel.sessionScanCount)
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 100)
+                    }
+                }
+                .ignoresSafeArea()
+            }
+
             // Error message (if any)
             if let errorMessage = viewModel.errorMessage {
                 VStack {
@@ -156,42 +170,7 @@ struct CameraModalView: View {
                 }
             }
         }
-        .sheet(isPresented: $viewModel.showMerchantPicker) {
-
-            // Merchant picker
-            MerchantPickerView(
-                selectedMerchant: $viewModel.selectedMerchant,
-                onSelect: { merchant in
-                    viewModel.selectMerchant(merchant)
-                }
-            )
-            .presentationDetents([.medium])
-        }
-        .sheet(isPresented: $viewModel.showResultConfirmation) {
-
-            // Scan result confirmation
-            if let photo = viewModel.capturedPhoto,
-               let barcode = viewModel.detectedBarcode,
-               let merchant = viewModel.selectedMerchant {
-                ScanResultView(
-                    photo: photo,
-                    barcode: barcode,
-                    merchant: merchant,
-                    storeLocation: $viewModel.storeLocation,
-                    onSave: {
-                        Task {
-                            await viewModel.saveScanRecord()
-
-                            // After saving, stay on camera page to continue scanning
-                            print("✅ [CAMERA_MODAL] 扫描完成，继续留在相机页面 | Scan completed, staying on camera page")
-                        }
-                    },
-                    onCancel: {
-                        viewModel.cancelSave()
-                    }
-                )
-            }
-        }
+        // Merchant picker and confirmation sheets removed - now auto-saves immediately
         .alert(Strings.Camera.cameraPermissionRequired, isPresented: $showPermissionAlert) {
             Button(Strings.Permissions.openSettings) {
                 permissionManager.openAppSettings()
@@ -219,11 +198,11 @@ struct CameraModalView: View {
             }
         }
         .task {
-            print("⚡ [CAMERA_MODAL] .task 触发 | .task triggered at \(Date().timeIntervalSince1970)")
+            print("⚡ [CAMERA_MODAL] .task triggered at \(Date().timeIntervalSince1970)")
             await initializeCamera()
         }
         .onDisappear {
-            print("👋 [CAMERA_MODAL] 视图消失，清理资源 | View disappeared, cleaning up")
+            print("👋 [CAMERA_MODAL] View disappeared, cleaning up")
             viewModel.reset()
         }
         .statusBar(hidden: false)
@@ -242,36 +221,36 @@ struct CameraModalView: View {
 
         // Request camera permission (if needed)
         if !permissionManager.cameraAuthorized {
-            print("📸 [CAMERA_MODAL] 相机权限未授予，请求权限 | Camera not authorized, requesting permission")
+            print("📸 [CAMERA_MODAL] Camera not authorized, requesting permission")
             let granted = await permissionManager.requestCameraPermission()
             if !granted {
-                print("❌ [CAMERA_MODAL] 相机权限被拒绝 | Camera permission denied")
+                print("❌ [CAMERA_MODAL] Camera permission denied")
                 showPermissionAlert = true
                 return
             }
-            print("✅ [CAMERA_MODAL] 相机权限已授予 | Camera permission granted")
+            print("✅ [CAMERA_MODAL] Camera permission granted")
         } else {
-            print("✅ [CAMERA_MODAL] 相机权限已存在 | Camera permission already granted")
+            print("✅ [CAMERA_MODAL] Camera permission already granted")
         }
 
         // Request location permission (optional)
         if !permissionManager.locationAuthorized {
-            print("📍 [CAMERA_MODAL] 请求位置权限 | Requesting location permission")
+            print("📍 [CAMERA_MODAL] Requesting location permission")
             permissionManager.requestLocationPermission()
         }
 
         // Initialize camera manager (async, doesn't block UI)
-        print("📸 [CAMERA_MODAL] 调用 initializeCamera (nonisolated, 不阻塞UI) at \(Date().timeIntervalSince1970)")
+        print("📸 [CAMERA_MODAL] Calling initializeCamera (nonisolated, non-blocking) at \(Date().timeIntervalSince1970)")
         await viewModel.initializeCamera()
-        print("✅ [CAMERA_MODAL] initializeCamera 完成 | initializeCamera completed at \(Date().timeIntervalSince1970)")
+        print("✅ [CAMERA_MODAL] initializeCamera completed at \(Date().timeIntervalSince1970)")
 
         // Mark as initialized (on MainActor)
         isInitialized = true
-        print("✅ [CAMERA_MODAL] UI 已更新 isInitialized = true | UI updated at \(Date().timeIntervalSince1970)")
+        print("✅ [CAMERA_MODAL] UI updated isInitialized = true at \(Date().timeIntervalSince1970)")
 
         // Start scanning (on MainActor)
         viewModel.startScanning()
-        print("✅ [CAMERA_MODAL] 开始扫描 | Started scanning at \(Date().timeIntervalSince1970)")
+        print("✅ [CAMERA_MODAL] Started scanning at \(Date().timeIntervalSince1970)")
         print("📸 [CAMERA_MODAL] ========================================")
     }
 }

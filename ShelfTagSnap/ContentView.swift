@@ -55,7 +55,7 @@ struct ContentView: View {
                     .transition(.opacity)
                     .zIndex(1)
                     .onAppear {
-                        print("✅ [ContentView] 显示主应用 - 已登录 | Showing main app - authenticated")
+                        print("✅ [ContentView] Showing main app - authenticated")
                     }
 
             case .unauthenticated:
@@ -64,7 +64,7 @@ struct ContentView: View {
                     .transition(.opacity)
                     .zIndex(2)
                     .onAppear {
-                        print("ℹ️ [ContentView] 显示认证界面 - 未登录 | Showing auth view - not authenticated")
+                        print("ℹ️ [ContentView] Showing auth view - not authenticated")
                     }
             }
         }
@@ -84,9 +84,9 @@ struct ContentView: View {
 
     /// Initialize the app
     private func initializeApp() async {
-        print("🚀 [ContentView] 初始化应用 | Initializing app")
-        print("🔍 [ContentView] Firebase 已初始化: \(firebaseManager.isInitialized)")
-        print("🔍 [ContentView] 认证状态: isAuthenticated = \(firebaseManager.isAuthenticated)")
+        print("🚀 [ContentView] Initializing app")
+        print("🔍 [ContentView] Firebase initialized: \(firebaseManager.isInitialized)")
+        print("🔍 [ContentView] Authentication state: isAuthenticated = \(firebaseManager.isAuthenticated)")
 
         // Show splash screen for at least 1 second (better UX)
         let minimumSplashDuration: UInt64 = 1_000_000_000 // 1 second
@@ -97,7 +97,7 @@ struct ContentView: View {
         try? await Task.sleep(nanoseconds: minimumSplashDuration)
 
         // Update app state based on authentication (already up-to-date)
-        print("✅ [ContentView] Splash 完成，更新 UI 状态 | Splash complete, updating UI state")
+        print("✅ [ContentView] Splash complete, updating UI state")
         await updateAppState(isAuthenticated: firebaseManager.isAuthenticated)
     }
 
@@ -120,7 +120,7 @@ struct ContentView: View {
                 }
             }
         }
-        print("📱 [ContentView] 应用状态更新 | App state updated: \(appState)")
+        print("📱 [ContentView] App state updated: \(appState)")
     }
 }
 

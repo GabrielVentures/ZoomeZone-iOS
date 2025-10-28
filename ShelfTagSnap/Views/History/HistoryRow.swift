@@ -245,10 +245,10 @@ struct HistoryRow: View {
 
     /// Accessibility description
     private var accessibilityDescription: String {
-        var description = "\(getMerchantDisplayName()), 条形码 \(record.barcode), \(formattedDate())"
+        var description = "\(getMerchantDisplayName()), barcode \(record.barcode), \(formattedDate())"
 
         if let location = record.storeLocation, !location.isEmpty {
-            description += ", 位置 \(location)"
+            description += ", location \(location)"
         }
 
         return description

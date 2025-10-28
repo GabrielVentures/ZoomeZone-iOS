@@ -247,13 +247,13 @@ enum CSVError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .encodingFailed:
-            return "CSV 编码失败 / CSV encoding failed"
+            return "CSV encoding failed"
         case .writeFailed(let error):
-            return "CSV 写入失败 / CSV write failed: \(error.localizedDescription)"
+            return "CSV write failed: \(error.localizedDescription)"
         case .fileNotFound:
-            return "文件未找到 / File not found"
+            return "File not found"
         case .invalidData:
-            return "无效数据 / Invalid data"
+            return "Invalid data"
         }
     }
 }
