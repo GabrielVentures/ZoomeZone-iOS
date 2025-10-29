@@ -10,6 +10,7 @@ import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
+import FirebaseCrashlytics
 import SwiftUI
 import Combine
 /// Firebase service manager for authentication and data sync
@@ -167,6 +168,13 @@ class FirebaseManager: ObservableObject {
     /// Configure Firebase
     static func configure() {
         FirebaseApp.configure()
+
+        // Configure Crashlytics
+        #if DEBUG
+        print("🔥 [FirebaseManager] Crashlytics configured (Debug mode)")
+        #else
+        print("🔥 [FirebaseManager] Crashlytics configured (Release mode)")
+        #endif
     }
 
     // MARK: - Auth State Listener
@@ -265,6 +273,9 @@ class FirebaseManager: ObservableObject {
             self.isAuthenticated = true
             self.authState = .authenticated
 
+            // Set Crashlytics user ID
+            FirebaseManager.setUserID(user.id)
+
             return user
 
         } catch let error as NSError {
@@ -295,6 +306,9 @@ class FirebaseManager: ObservableObject {
             self.currentUser = user
             self.isAuthenticated = true
             self.authState = .authenticated
+
+            // Set Crashlytics user ID
+            FirebaseManager.setUserID(user.id)
 
             return user
 
@@ -554,6 +568,62 @@ class FirebaseManager: ObservableObject {
         let downloadURL = try await imageRef.downloadURL()
 
         return downloadURL
+    }
+
+    // MARK: - Crashlytics Methods
+
+    /// Log non-fatal error to Crashlytics
+    /// - Parameters:
+    ///   - error: Error to log
+    ///   - context: Additional context information
+    static func logError(_ error: Error, context: [String: Any]? = nil) {
+        let crashlytics = Crashlytics.crashlytics()
+
+        // Log error
+        crashlytics.record(error: error)
+
+        // Add custom keys for context
+        if let context = context {
+            for (key, value) in context {
+                crashlytics.setCustomValue(value, forKey: key)
+            }
+        }
+
+        #if DEBUG
+        print("🔥 [Crashlytics] Error logged: \(error.localizedDescription)")
+        if let context = context {
+            print("   Context: \(context)")
+        }
+        #endif
+    }
+
+    /// Set user identifier for crash reports
+    /// - Parameter userID: User ID
+    static func setUserID(_ userID: String) {
+        Crashlytics.crashlytics().setUserID(userID)
+        #if DEBUG
+        print("🔥 [Crashlytics] User ID set: \(userID)")
+        #endif
+    }
+
+    /// Log custom message to Crashlytics
+    /// - Parameter message: Message to log
+    static func log(_ message: String) {
+        Crashlytics.crashlytics().log(message)
+        #if DEBUG
+        print("🔥 [Crashlytics] Log: \(message)")
+        #endif
+    }
+
+    /// Set custom key-value for crash reports
+    /// - Parameters:
+    ///   - value: Value
+    ///   - key: Key
+    static func setCustomValue(_ value: Any, forKey key: String) {
+        Crashlytics.crashlytics().setCustomValue(value, forKey: key)
+        #if DEBUG
+        print("🔥 [Crashlytics] Custom value set: \(key) = \(value)")
+        #endif
     }
 
     // MARK: - Cleanup
