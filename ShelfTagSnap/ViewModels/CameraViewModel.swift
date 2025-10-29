@@ -62,6 +62,9 @@ class CameraViewModel: ObservableObject {
     /// Session scan counter (resets when camera closes)
     @Published var sessionScanCount: Int = 0
 
+    /// Last detected barcode bounding box (for auto-crop)
+    private var detectedBarcodeBoundingBox: CGRect?
+
     // MARK: - Dependencies
 
     private let cameraManager: CameraManager
@@ -301,6 +304,7 @@ class CameraViewModel: ObservableObject {
         // Update state
         detectedBarcode = result.barcodeValue
         detectedSymbology = result.symbology
+        detectedBarcodeBoundingBox = result.boundingBox  // Save bounding box for auto-crop
         scanState = .detected(result.barcodeValue)
         statusMessage = "Barcode detected"
 
@@ -334,7 +338,7 @@ class CameraViewModel: ObservableObject {
 
     /// Check if barcode already exists in database
     private func checkDuplicateInDatabase(_ barcode: String) -> ScanRecord? {
-        return storageService.getRecord(byBarcode: barcode)
+        return recordStorageService.getRecord(byBarcode: barcode)
     }
 
     /// Allow duplicate scan (user chose "Scan Again")
@@ -365,7 +369,22 @@ class CameraViewModel: ObservableObject {
 
         do {
             let photo = try await cameraManager.capturePhoto()
-            capturedPhoto = photo
+
+            // Auto-crop photo around barcode (if bounding box available)
+            let processedPhoto: UIImage
+            if let boundingBox = detectedBarcodeBoundingBox {
+                print("📸 [CAMERA_VM] Auto-cropping photo around barcode...")
+                processedPhoto = ImageCropper.cropAroundBarcode(
+                    image: photo,
+                    barcodeBoundingBox: boundingBox
+                )
+                print("✅ [CAMERA_VM] Photo cropped successfully")
+            } else {
+                print("⚠️ [CAMERA_VM] No bounding box available, using original photo")
+                processedPhoto = photo
+            }
+
+            capturedPhoto = processedPhoto
 
             // Haptic feedback - photo captured
             HapticFeedbackManager.shared.success()
@@ -531,6 +550,7 @@ class CameraViewModel: ObservableObject {
     private func resetToScanning() {
         detectedBarcode = nil
         detectedSymbology = nil
+        detectedBarcodeBoundingBox = nil  // Clear bounding box
         capturedPhoto = nil
         selectedMerchant = nil
         storeLocation = ""
@@ -551,6 +571,7 @@ class CameraViewModel: ObservableObject {
         stopScanning()
         detectedBarcode = nil
         detectedSymbology = nil
+        detectedBarcodeBoundingBox = nil  // Clear bounding box
         capturedPhoto = nil
         selectedMerchant = nil
         storeLocation = ""

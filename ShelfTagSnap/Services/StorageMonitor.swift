@@ -32,6 +32,7 @@ class StorageMonitor {
 
     private let fileManager = FileManager.default
     private let storageService = LocalStorageService.shared
+    private let recordStorageService = RecordStorageService.shared
 
     // MARK: - Initialization
 
@@ -301,10 +302,22 @@ class StorageMonitor {
     private func deleteAllData() async throws -> Int64 {
         let beforeSize = getAppUsedSpace()
 
-        // Delete all records
-        try storageService.deleteAllRecords()
+        // Get current user
+        guard let username = FirebaseManager.shared.currentUser?.username else {
+            throw NSError(
+                domain: "StorageMonitor",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No current user found"]
+            )
+        }
 
-        // Delete all photos
+        // Delete SwiftData records
+        try await recordStorageService.deleteAllRecords(forUsername: username)
+
+        // Delete legacy JSON records (for backward compatibility)
+        try? storageService.deleteAllRecords()
+
+        // Delete all photos (both old and new)
         try storageService.deleteAllImages()
 
         // Delete all exports

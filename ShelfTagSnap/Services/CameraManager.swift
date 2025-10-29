@@ -7,6 +7,7 @@
 
 import Foundation
 import AVFoundation
+import AudioToolbox
 import UIKit
 import Combine
 
@@ -279,7 +280,7 @@ class CameraManager: NSObject, ObservableObject {
 
     // MARK: - Photo Capture
 
-    /// Capture photo
+    /// Capture photo (silent mode - no shutter sound)
     func capturePhoto() async throws -> UIImage {
         return try await withCheckedThrowingContinuation { continuation in
             // Save continuation
@@ -287,13 +288,33 @@ class CameraManager: NSObject, ObservableObject {
                 continuation.resume(with: result)
             }
 
+            // Configure audio session for silent capture
+            configureSilentAudioSession()
+
             // Create photo settings
             let photoSettings = AVCapturePhotoSettings()
             photoSettings.flashMode = .auto
             photoSettings.isHighResolutionPhotoEnabled = true
 
-            // Capture photo
+            // Capture photo (silently)
             photoOutput.capturePhoto(with: photoSettings, delegate: self)
+        }
+    }
+
+    /// Configure audio session for silent photo capture
+    private func configureSilentAudioSession() {
+        let audioSession = AVAudioSession.sharedInstance()
+
+        do {
+            // Set audio session to ambient mode (allows silent capture)
+            try audioSession.setCategory(.ambient, mode: .default, options: [])
+            try audioSession.setActive(true, options: [])
+
+            #if DEBUG
+            print("🔇 [CAMERA_MANAGER] Audio session configured for silent capture")
+            #endif
+        } catch {
+            print("⚠️ [CAMERA_MANAGER] Failed to configure silent audio session: \(error.localizedDescription)")
         }
     }
 
@@ -406,6 +427,21 @@ class CameraManager: NSObject, ObservableObject {
 // MARK: - AVCapturePhotoCaptureDelegate
 
 extension CameraManager: AVCapturePhotoCaptureDelegate {
+
+    /// Called just before the photo is captured - disable shutter sound here
+    nonisolated func photoOutput(
+        _ output: AVCapturePhotoOutput,
+        willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings
+    ) {
+        // Dispose of the system shutter sound (ID: 1108)
+        // This must be called BEFORE the photo is captured to prevent the sound
+        AudioServicesDisposeSystemSoundID(1108)
+
+        #if DEBUG
+        print("🔇 [CAMERA_MANAGER] Shutter sound disabled for capture")
+        #endif
+    }
+
     nonisolated func photoOutput(
         _ output: AVCapturePhotoOutput,
         didFinishProcessingPhoto photo: AVCapturePhoto,

@@ -129,6 +129,24 @@ class RecordStorageService {
         )
     }
 
+    /// Get a single record by barcode
+    func getRecord(byBarcode barcode: String) -> ScanRecord? {
+        let context = swiftDataService.mainContext
+        let descriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { entity in
+                entity.barcodeInfo?.code == barcode
+            }
+        )
+
+        do {
+            let entities = try context.fetch(descriptor)
+            return entities.first?.toLegacyRecord()
+        } catch {
+            print("[RecordStorageService] Failed to fetch record by barcode: \(error)")
+            return nil
+        }
+    }
+
     // MARK: - Delete Operations
 
     /// Delete a single record
