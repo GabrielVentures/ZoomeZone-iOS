@@ -620,7 +620,8 @@ struct HistoryListView: View {
                 Task {
                     await performExport()
                 }
-            }
+            },
+            exportProgress: $exportProgress
         )
     }
 
@@ -762,13 +763,13 @@ struct HistoryListView: View {
                 selectedRecords.removeAll()
             }
 
-            // Close preview and show share
+            // Show share sheet (keep preview open until share sheet is ready)
             await MainActor.run {
-                showExportPreview = false
+                showShareSheet = true
 
-                // Delay showing share sheet to ensure preview is closed
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showShareSheet = true
+                // Close preview after share sheet is shown
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    showExportPreview = false
                 }
             }
         } catch {

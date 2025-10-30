@@ -19,6 +19,7 @@ struct ExportPreviewView: View {
 
     let statistics: ExportStatistics
     let onConfirm: () -> Void
+    @Binding var exportProgress: ExportProgress?
 
     // MARK: - State
 
@@ -40,8 +41,10 @@ struct ExportPreviewView: View {
                     // Description
                     descriptionSection
 
-                    // Buttons
-                    if !isExporting {
+                    // Buttons or Loading
+                    if isExporting {
+                        loadingSection
+                    } else {
                         buttonsSection
                     }
                 }
@@ -195,6 +198,42 @@ struct ExportPreviewView: View {
         }
     }
 
+    // MARK: - Loading Section
+
+    private var loadingSection: some View {
+        VStack(spacing: 20) {
+            // Progress view
+            if let progress = exportProgress {
+                VStack(spacing: 12) {
+                    ProgressView(value: progress.percentage, total: 1.0)
+                        .progressViewStyle(.linear)
+                        .tint(.blue)
+
+                    Text(progress.status)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("\(progress.currentItem)/\(progress.totalItems)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .tint(.blue)
+
+                    Text("Preparing export...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
+        .accessibilityLabel("Exporting data")
+    }
+
     // MARK: - Helper Methods
 
     private func performExport() {
@@ -260,7 +299,8 @@ struct StatisticRow: View {
         ),
         onConfirm: {
             print("Export confirmed")
-        }
+        },
+        exportProgress: .constant(nil)
     )
 }
 
@@ -273,7 +313,8 @@ struct StatisticRow: View {
         ),
         onConfirm: {
             print("Export confirmed")
-        }
+        },
+        exportProgress: .constant(nil)
     )
 }
 
@@ -289,6 +330,7 @@ struct StatisticRow: View {
         ),
         onConfirm: {
             print("Export confirmed")
-        }
+        },
+        exportProgress: .constant(nil)
     )
 }
