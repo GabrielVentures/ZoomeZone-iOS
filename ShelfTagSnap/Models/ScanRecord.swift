@@ -32,6 +32,17 @@ struct ScanRecord: Codable, Identifiable, Hashable {
 
     var isSynced: Bool
 
+    // MARK: - Cloud Sync Properties (Milestone 2)
+
+    /// Cloud upload status
+    var uploadStatus: UploadStatus
+
+    /// Upload failure error message
+    var uploadError: String?
+
+    /// Last upload attempt timestamp
+    var lastUploadAttempt: Date?
+
     // MARK: - Initialization
 
     /// Create a new scan record
@@ -54,6 +65,9 @@ struct ScanRecord: Codable, Identifiable, Hashable {
         self.imageFilename = imageFilename
         self.storeLocation = storeLocation
         self.isSynced = false
+        self.uploadStatus = .pending
+        self.uploadError = nil
+        self.lastUploadAttempt = nil
     }
 
     /// Create from all fields (for conversion)
@@ -67,7 +81,10 @@ struct ScanRecord: Codable, Identifiable, Hashable {
         longitude: Double?,
         imageFilename: String,
         storeLocation: String?,
-        isSynced: Bool
+        isSynced: Bool,
+        uploadStatus: UploadStatus = .pending,
+        uploadError: String? = nil,
+        lastUploadAttempt: Date? = nil
     ) {
         self.id = id
         self.username = username
@@ -79,6 +96,9 @@ struct ScanRecord: Codable, Identifiable, Hashable {
         self.imageFilename = imageFilename
         self.storeLocation = storeLocation
         self.isSynced = isSynced
+        self.uploadStatus = uploadStatus
+        self.uploadError = uploadError
+        self.lastUploadAttempt = lastUploadAttempt
     }
 
     // MARK: - Computed Properties
@@ -116,6 +136,9 @@ struct ScanRecord: Codable, Identifiable, Hashable {
         case imageFilename = "Image_Filename"
         case storeLocation = "Store_Location"
         case isSynced
+        case uploadStatus
+        case uploadError
+        case lastUploadAttempt
     }
 }
 

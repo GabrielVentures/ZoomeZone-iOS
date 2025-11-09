@@ -226,6 +226,15 @@ class LocalStorageService {
         }
     }
 
+    /// Check if image exists
+    /// ✅ FIX P1-10: Validate image file existence
+    /// - Parameter filename: File name
+    /// - Returns: Whether the image file exists
+    func imageExists(filename: String) -> Bool {
+        let fileURL = imagesDirectory.appendingPathComponent(filename)
+        return fileManager.fileExists(atPath: fileURL.path)
+    }
+
     /// Load image
     /// - Parameter filename: File name
     /// - Returns: UIImage

@@ -1,23 +1,24 @@
 //
-//  HistoryListView.swift
+//  LocalHistoryView.swift
 //  ShelfTagSnap
 //
 //  Created by kent.sun on 2025/10/23.
+//  Enhanced for Milestone 2 - Cloud Sync with Upload Status Filtering
 //
 
 import SwiftUI
 import Combine
 
-/// Scan history list view
+/// Local history list view (Milestone 2: Renamed from HistoryListView)
 
-struct HistoryListView: View {
+struct LocalHistoryView: View {
     // MARK: - Environment
 
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - State Objects
 
-    @StateObject private var viewModel = HistoryViewModel()
+    @StateObject private var viewModel = LocalHistoryViewModel()
 
     // MARK: - State
 
@@ -268,6 +269,11 @@ struct HistoryListView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 8)
 
+                // ⭐ Milestone 2: Upload status filter (Hidden by default)
+                // uploadStatusFilterView
+                //     .padding(.horizontal, 16)
+                //     .padding(.bottom, 12)
+
                 // Content: records list grouped by date
                 if viewModel.hasFilteredResults {
                     ForEach(viewModel.groupedRecords) { group in
@@ -341,6 +347,11 @@ struct HistoryListView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 4)
+
+                // ⭐ Milestone 2: Upload status filter (Hidden by default)
+                // uploadStatusFilterView
+                //     .padding(.horizontal, 16)
+                //     .padding(.bottom, 8)
 
                 // Content: pure waterfall grid (no day grouping)
                 if viewModel.hasFilteredResults {
@@ -452,6 +463,19 @@ struct HistoryListView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    // ⭐ Milestone 2: Manual upload action
+                    if record.uploadStatus == .pending || record.uploadStatus == .failed {
+                        Button {
+                            Task {
+                                await viewModel.uploadRecord(record)
+                            }
+                        } label: {
+                            Label("Upload", systemImage: "icloud.and.arrow.up")
+                        }
+                        .tint(.blue)
+                    }
+                }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) {
                         recordToDelete = record
@@ -509,6 +533,17 @@ struct HistoryListView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .contextMenu {
+                    // ⭐ Milestone 2: Manual upload action
+                    if record.uploadStatus == .pending || record.uploadStatus == .failed {
+                        Button {
+                            Task {
+                                await viewModel.uploadRecord(record)
+                            }
+                        } label: {
+                            Label("Upload to Cloud", systemImage: "icloud.and.arrow.up")
+                        }
+                    }
+
                     Button(role: .destructive) {
                         recordToDelete = record
                         showDeleteAlert = true
@@ -683,6 +718,39 @@ struct HistoryListView: View {
         .accessibilityLabel("Scan record: \(record.barcode)")
     }
 
+    // MARK: - Upload Status Filter (Milestone 2)
+
+    /// Upload status filter picker
+    private var uploadStatusFilterView: some View {
+        HStack(spacing: 0) {
+            ForEach(UploadStatusFilter.allCases, id: \.self) { filter in
+                Button {
+                    viewModel.uploadStatusFilter = filter
+                    HapticFeedbackManager.shared.light()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: filter.systemImage)
+                            .font(.caption)
+
+                        Text(filter.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(viewModel.uploadStatusFilter == filter ? .white : .primary)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(viewModel.uploadStatusFilter == filter ? Color.blue : Color(.systemGray6))
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .accessibilityLabel("Filter by upload status")
+    }
+
     // MARK: - Helper Methods
 
     /// Perform export
@@ -850,17 +918,17 @@ struct HistoryListView: View {
 // MARK: - Preview
 
 #Preview("Empty") {
-    HistoryListView()
+    LocalHistoryView()
         .environmentObject(FirebaseManager.shared)
 }
 
 #Preview("With Records") {
-    let viewModel = HistoryViewModel()
-    return HistoryListView()
+    let viewModel = LocalHistoryViewModel()
+    return LocalHistoryView()
         .environmentObject(FirebaseManager.shared)
 }
 
 #Preview("Loading") {
-    HistoryListView()
+    LocalHistoryView()
         .environmentObject(FirebaseManager.shared)
 }

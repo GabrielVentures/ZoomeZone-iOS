@@ -46,22 +46,22 @@ class RecordStorageService {
         storeLocation: String?,
         image: UIImage
     ) async throws -> ScanRecord {
-        // 1. Save image first
-        let imageFilename = "\(UUID().uuidString).jpg"
-        let imageURL = try localStorageService.saveImage(image, filename: imageFilename)
-
-        // Get image metadata
-        let imageSize = try? FileManager.default.attributesOfItem(atPath: imageURL.path)[.size] as? Int64
-        let imageWidth = Int(image.size.width * image.scale)
-        let imageHeight = Int(image.size.height * image.scale)
-
-        // 2. Create SwiftData entity
+        // 1. Create SwiftData entity first to get the record ID
         let entity = ScanRecordEntity(
             username: username,
             timestamp: Date(),
             merchant: merchant,
             isSynced: false
         )
+
+        // 2. Save image using the record ID as filename (for Cloud Function mapping)
+        let imageFilename = "\(entity.id).jpg"
+        let imageURL = try localStorageService.saveImage(image, filename: imageFilename)
+
+        // Get image metadata
+        let imageSize = try? FileManager.default.attributesOfItem(atPath: imageURL.path)[.size] as? Int64
+        let imageWidth = Int(image.size.width * image.scale)
+        let imageHeight = Int(image.size.height * image.scale)
 
         // 3. Create barcode info
         entity.barcodeInfo = BarcodeInfoEntity(
@@ -92,8 +92,22 @@ class RecordStorageService {
         // 6. Save to database
         try swiftDataService.insertScanRecord(entity)
 
-        // 7. Return legacy ScanRecord for compatibility
-        return entity.toLegacyRecord()
+        // 7. Get the legacy record to return
+        let savedRecord = entity.toLegacyRecord()
+
+        print("💾 [RecordStorageService] Record saved: \(savedRecord.id)")
+        print("   - Merchant: \(savedRecord.merchant)")
+        print("   - Barcode: \(savedRecord.barcode)")
+        print("   - Image: \(savedRecord.imageFilename)")
+
+        // 8. Trigger cloud upload if enabled
+        Task { @MainActor in
+            print("☁️ [RecordStorageService] Triggering cloud upload...")
+            await CloudSyncService.shared.addToQueue(savedRecord)
+        }
+
+        // 9. Return legacy ScanRecord for compatibility
+        return savedRecord
     }
 
     // MARK: - Load Operations
@@ -150,7 +164,14 @@ class RecordStorageService {
     // MARK: - Delete Operations
 
     /// Delete a single record
+    /// ✅ FIX P1-12: Prevent deletion of records currently being uploaded
     func deleteRecord(_ record: ScanRecord) async throws {
+        // ✅ FIX P1-12: Check if record is currently being uploaded
+        if await UploadCoordinator.shared.isUploading(record.id) {
+            print("⚠️ [RecordStorageService] Cannot delete record \(record.id) - currently uploading")
+            throw StorageError.recordLocked("Record is currently being uploaded")
+        }
+
         // 1. Find entity in database
         let context = swiftDataService.mainContext
         let entities = try context.fetch(
@@ -168,6 +189,8 @@ class RecordStorageService {
 
         // 3. Delete from database (cascade will delete related entities)
         try swiftDataService.deleteScanRecord(entity)
+
+        print("✅ [RecordStorageService] Deleted record: \(record.id)")
     }
 
     /// Delete multiple records
@@ -220,6 +243,160 @@ class RecordStorageService {
             return "Unknown"
         }
     }
+
+    // MARK: - Cloud Upload Operations (Milestone 2)
+
+    /// Update upload status for a record
+    /// ✅ FIX P0-8: Enforce data consistency - isUploaded=true MUST have uploadedAt timestamp
+    func updateUploadStatus(
+        recordId: String,
+        isUploaded: Bool,
+        uploadedAt: Date?
+    ) async throws {
+        let context = swiftDataService.mainContext
+
+        let descriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { $0.id == recordId }
+        )
+
+        guard let entity = try context.fetch(descriptor).first else {
+            throw StorageError.recordNotFound
+        }
+
+        // ✅ FIX P0-8: Data consistency validation
+        if isUploaded && uploadedAt == nil {
+            // If marking as uploaded, MUST provide timestamp
+            throw StorageError.inconsistentUploadState(
+                "Cannot mark record as uploaded without uploadedAt timestamp"
+            )
+        }
+
+        entity.isUploaded = isUploaded
+        entity.uploadedAt = uploadedAt
+
+        try context.save()
+
+        print("☁️ [RecordStorageService] Updated upload status for record \(recordId): isUploaded=\(isUploaded), uploadedAt=\(uploadedAt?.description ?? "nil")")
+    }
+
+    /// Get pending upload records (not yet uploaded)
+    func getPendingUploadRecords() async throws -> [ScanRecord] {
+        let context = swiftDataService.mainContext
+
+        let descriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { $0.isUploaded == false },
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+
+        let entities = try context.fetch(descriptor)
+        let records = entities.map { $0.toLegacyRecord() }
+
+        print("☁️ [RecordStorageService] Found \(records.count) pending upload records")
+        return records
+    }
+
+    /// Get uploaded records
+    func getUploadedRecords() async throws -> [ScanRecord] {
+        let context = swiftDataService.mainContext
+
+        let descriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { $0.isUploaded == true },
+            sortBy: [SortDescriptor(\.uploadedAt, order: .reverse)]
+        )
+
+        let entities = try context.fetch(descriptor)
+        let records = entities.map { $0.toLegacyRecord() }
+
+        print("☁️ [RecordStorageService] Found \(records.count) uploaded records")
+        return records
+    }
+
+    /// Get upload statistics
+    func getUploadStatistics() async throws -> (total: Int, uploaded: Int, pending: Int) {
+        let context = swiftDataService.mainContext
+
+        // Total count
+        let totalDescriptor = FetchDescriptor<ScanRecordEntity>()
+        let totalCount = try context.fetchCount(totalDescriptor)
+
+        // Uploaded count
+        let uploadedDescriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { $0.isUploaded == true }
+        )
+        let uploadedCount = try context.fetchCount(uploadedDescriptor)
+
+        // Pending count
+        let pendingCount = totalCount - uploadedCount
+
+        print("☁️ [RecordStorageService] Upload stats: total=\(totalCount), uploaded=\(uploadedCount), pending=\(pendingCount)")
+
+        return (total: totalCount, uploaded: uploadedCount, pending: pendingCount)
+    }
+
+    // MARK: - Data Validation (Fix P0-8)
+
+    /// Validate and fix inconsistent upload states
+    /// ✅ FIX P0-8: Detect and fix records with isUploaded=true but uploadedAt=nil
+    func validateAndFixUploadStates() async throws -> (fixed: Int, inconsistent: [String]) {
+        let context = swiftDataService.mainContext
+
+        // Find records with isUploaded=true but no uploadedAt timestamp
+        let descriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { entity in
+                entity.isUploaded == true && entity.uploadedAt == nil
+            }
+        )
+
+        let inconsistentRecords = try context.fetch(descriptor)
+
+        if inconsistentRecords.isEmpty {
+            print("✅ [RecordStorageService] No inconsistent upload states found")
+            return (fixed: 0, inconsistent: [])
+        }
+
+        print("⚠️ [RecordStorageService] Found \(inconsistentRecords.count) records with inconsistent upload states")
+
+        var fixedCount = 0
+        var inconsistentIds: [String] = []
+
+        for entity in inconsistentRecords {
+            // Strategy: Mark as pending since we can't verify actual upload
+            entity.isUploaded = false
+            entity.uploadedAt = nil
+            fixedCount += 1
+            inconsistentIds.append(entity.id)
+
+            print("   🔧 Fixed record \(entity.id): set isUploaded=false")
+        }
+
+        try context.save()
+
+        print("✅ [RecordStorageService] Fixed \(fixedCount) inconsistent records")
+        return (fixed: fixedCount, inconsistent: inconsistentIds)
+    }
+
+    /// Validate upload state for a specific record
+    /// ✅ FIX P0-8: Check if a record's upload state is consistent
+    func validateUploadState(recordId: String) async throws -> Bool {
+        let context = swiftDataService.mainContext
+
+        let descriptor = FetchDescriptor<ScanRecordEntity>(
+            predicate: #Predicate { $0.id == recordId }
+        )
+
+        guard let entity = try context.fetch(descriptor).first else {
+            throw StorageError.recordNotFound
+        }
+
+        // Validate: if isUploaded=true, uploadedAt must not be nil
+        let isConsistent = !(entity.isUploaded && entity.uploadedAt == nil)
+
+        if !isConsistent {
+            print("⚠️ [RecordStorageService] Record \(recordId) has inconsistent state: isUploaded=\(entity.isUploaded), uploadedAt=\(entity.uploadedAt?.description ?? "nil")")
+        }
+
+        return isConsistent
+    }
 }
 
 // MARK: - Storage Errors
@@ -229,6 +406,8 @@ extension RecordStorageService {
         case recordNotFound
         case imageNotFound
         case saveFailed(String)
+        case inconsistentUploadState(String)  // ✅ FIX P0-8: New error for data consistency
+        case recordLocked(String)  // ✅ FIX P1-12: New error for locked records
 
         var errorDescription: String? {
             switch self {
@@ -238,6 +417,10 @@ extension RecordStorageService {
                 return "Image file not found"
             case .saveFailed(let reason):
                 return "Save failed: \(reason)"
+            case .inconsistentUploadState(let reason):
+                return "Inconsistent upload state: \(reason)"
+            case .recordLocked(let reason):
+                return "Record locked: \(reason)"
             }
         }
     }

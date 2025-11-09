@@ -23,10 +23,10 @@ class ImageCropper {
     // MARK: - Configuration
 
     /// Vertical expansion multiplier (top/bottom: 0.8 barcode height)
-    private static let verticalExpansionMultiplier: CGFloat = 0.9
+    private static let verticalExpansionMultiplier: CGFloat = 1.1
 
     /// Horizontal expansion multiplier (left/right: 4.7 barcode width)
-    private static let horizontalExpansionMultiplier: CGFloat = 4.7
+    private static let horizontalExpansionMultiplier: CGFloat = 4.9
 
     // MARK: - Public Methods
 

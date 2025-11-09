@@ -29,6 +29,14 @@ final class ScanRecordEntity {
     /// Whether the record has been synced to server
     var isSynced: Bool
 
+    // MARK: - Cloud Upload Properties (Milestone 2)
+
+    /// Whether the record has been uploaded to cloud
+    var isUploaded: Bool
+
+    /// Timestamp when record was uploaded to cloud
+    var uploadedAt: Date?
+
     // MARK: - Relationships
 
     /// Barcode information
@@ -51,6 +59,8 @@ final class ScanRecordEntity {
         timestamp: Date = Date(),
         merchant: String,
         isSynced: Bool = false,
+        isUploaded: Bool = false,
+        uploadedAt: Date? = nil,
         barcodeInfo: BarcodeInfoEntity? = nil,
         storeInfo: StoreInfoEntity? = nil,
         photoInfo: PhotoInfoEntity? = nil
@@ -60,6 +70,8 @@ final class ScanRecordEntity {
         self.timestamp = timestamp
         self.merchant = merchant
         self.isSynced = isSynced
+        self.isUploaded = isUploaded
+        self.uploadedAt = uploadedAt
         self.barcodeInfo = barcodeInfo
         self.storeInfo = storeInfo
         self.photoInfo = photoInfo
@@ -109,6 +121,9 @@ final class ScanRecordEntity {
 extension ScanRecordEntity {
     /// Convert to legacy ScanRecord for compatibility
     func toLegacyRecord() -> ScanRecord {
+        // Determine upload status based on isUploaded flag
+        let uploadStatus: UploadStatus = isUploaded ? .synced : .pending
+
         return ScanRecord(
             id: id,
             username: username,
@@ -119,7 +134,10 @@ extension ScanRecordEntity {
             longitude: storeInfo?.longitude,
             imageFilename: photoInfo?.filename ?? "",
             storeLocation: storeInfo?.storeName,
-            isSynced: isSynced
+            isSynced: isSynced,
+            uploadStatus: uploadStatus,
+            uploadError: nil,
+            lastUploadAttempt: uploadedAt
         )
     }
 
@@ -154,12 +172,17 @@ extension ScanRecordEntity {
 extension ScanRecord {
     /// Create entity from legacy record
     func toEntity() -> ScanRecordEntity {
+        // Convert uploadStatus to isUploaded boolean
+        let isUploaded = uploadStatus == .synced
+
         let entity = ScanRecordEntity(
             id: id,
             username: username,
             timestamp: timestamp,
             merchant: merchant,
-            isSynced: isSynced
+            isSynced: isSynced,
+            isUploaded: isUploaded,
+            uploadedAt: lastUploadAttempt
         )
 
         // Create barcode info

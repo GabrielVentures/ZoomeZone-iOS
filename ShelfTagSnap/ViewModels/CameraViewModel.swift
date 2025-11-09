@@ -90,6 +90,15 @@ class CameraViewModel: ObservableObject {
     /// Allow duplicate scan flag (temporarily allowed after user confirmation)
     private var allowDuplicateOverride: Bool = false
 
+    /// ✅ FIX: Track recently saved barcode to prevent immediate re-detection
+    /// After saving a barcode, ignore it for a short period to prevent duplicate alerts
+    private var recentlySavedBarcode: (code: String, time: Date)?
+    private let recentlySavedIgnoreInterval: TimeInterval = 3.0
+
+    /// ✅ BEST PRACTICE: Task reference for save operation (supports cancellation)
+    /// Using Task reference instead of Bool flag follows Swift Concurrency best practices
+    private var activeSaveTask: Task<Void, Never>?
+
     // MARK: - Scan State
 
     enum ScanState: Equatable {
@@ -253,6 +262,21 @@ class CameraViewModel: ObservableObject {
 
     /// Handle barcode detection result
     private func handleBarcodeDetection(_ result: BarcodeDetectionResult) {
+        // ✅ EDGE CASE 3: Block new detections if save is in progress
+        // Using scanState as single source of truth instead of separate flag
+        guard scanState != .saving else {
+            print("⚠️ [CameraVM] Save in progress (state: \(scanState)), ignoring new detection")
+            return
+        }
+
+        // ✅ FIX ISSUE 2: Ignore recently saved barcode to prevent immediate re-detection
+        if let recent = recentlySavedBarcode,
+           recent.code == result.barcodeValue,
+           Date().timeIntervalSince(recent.time) < recentlySavedIgnoreInterval {
+            print("⚠️ [CameraVM] Ignoring recently saved barcode: \(result.barcodeValue)")
+            return
+        }
+
         // Update distance level
         currentDistanceLevel = result.distanceLevel
 
@@ -276,6 +300,12 @@ class CameraViewModel: ObservableObject {
         case .optimal:
             // Distance is optimal
             statusMessage = nil
+        }
+
+        // ✅ FIX ISSUE 1: Clear allowDuplicateOverride when detecting a different barcode
+        if allowDuplicateOverride && result.barcodeValue != lastDetectedBarcodeData?.barcode {
+            print("✅ [CameraVM] Detecting new barcode, clearing allowDuplicateOverride")
+            allowDuplicateOverride = false
         }
 
         // Check if barcode already exists in database (unless user allowed duplicate)
@@ -342,19 +372,57 @@ class CameraViewModel: ObservableObject {
     }
 
     /// Allow duplicate scan (user chose "Scan Again")
+    /// ✅ BEST PRACTICE: Using state machine + Task reference pattern
+    /// This prevents race conditions from rapid clicks while supporting cancellation
     func allowDuplicateScan() {
+        // ✅ EDGE CASE 2: Prevent duplicate saves if already saving (check state machine)
+        guard scanState != .saving else {
+            print("⚠️ [CameraVM] Already saving (state: \(scanState)), ignoring duplicate click")
+            return
+        }
+
+        // ✅ EDGE CASE 2: Cancel any previous save task if it exists
+        // This handles the case where user clicks rapidly before Task starts
+        if let existingTask = activeSaveTask {
+            print("⚠️ [CameraVM] Cancelling previous save task")
+            existingTask.cancel()
+        }
+
         showDuplicateAlert = false
         duplicateInfo = nil
+
+        // ✅ Set override flag to prevent duplicate detection after this save
         allowDuplicateOverride = true
 
-        // Resume barcode detection, wait for user to scan again
-        cameraManager.enableBarcodeDetection()
+        // ✅ BEST PRACTICE: Store Task reference for cancellation support
+        activeSaveTask = Task { @MainActor in
+            await saveScanRecordAutomatically()
+
+            // ✅ EDGE CASE 4: Only reset if task wasn't cancelled
+            guard !Task.isCancelled else {
+                print("⚠️ [CameraVM] Save task was cancelled, skipping reset")
+                return
+            }
+
+            // Clean up: reset flags and task reference
+            allowDuplicateOverride = false
+            activeSaveTask = nil
+            print("✅ [CameraVM] Duplicate save completed, flags reset")
+        }
     }
 
     /// Cancel duplicate scan (user chose "Cancel")
     func cancelDuplicateScan() {
+        // ✅ EDGE CASE 5: Cancel any pending save task when user cancels
+        if let task = activeSaveTask {
+            print("⚠️ [CameraVM] User cancelled, cancelling save task")
+            task.cancel()
+            activeSaveTask = nil
+        }
+
         showDuplicateAlert = false
         duplicateInfo = nil
+        allowDuplicateOverride = false  // ✅ EDGE CASE 5: Reset override flag
 
         // Resume barcode detection
         cameraManager.enableBarcodeDetection()
@@ -403,6 +471,12 @@ class CameraViewModel: ObservableObject {
 
     /// Save scan record automatically without confirmation
     private func saveScanRecordAutomatically() async {
+        // ✅ EDGE CASE 4: Check if task was cancelled before starting
+        guard !Task.isCancelled else {
+            print("⚠️ [CameraVM] Save task cancelled before start")
+            return
+        }
+
         guard let barcode = detectedBarcode,
               let photo = capturedPhoto,
               let user = firebaseManager.currentUser else {
@@ -415,10 +489,18 @@ class CameraViewModel: ObservableObject {
         let storeName = preselectedStoreName ?? "Unknown Store"
         let defaultMerchant = Merchant.walmart  // Default merchant
 
+        // ✅ EDGE CASE 10: Set state to .saving (blocks new detections)
         scanState = .saving
         statusMessage = "Saving..."
 
         do {
+            // ✅ EDGE CASE 4: Check cancellation after state change
+            guard !Task.isCancelled else {
+                print("⚠️ [CameraVM] Save task cancelled during setup")
+                resetToScanning()
+                return
+            }
+
             // Get GPS location (optional)
             var location: CLLocation?
             if permissionManager.locationAuthorized {
@@ -430,8 +512,15 @@ class CameraViewModel: ObservableObject {
                 }
             }
 
+            // ✅ EDGE CASE 4: Check cancellation before expensive save operation
+            guard !Task.isCancelled else {
+                print("⚠️ [CameraVM] Save task cancelled before save")
+                resetToScanning()
+                return
+            }
+
             // Save using RecordStorageService (SwiftData)
-            _ = try await recordStorageService.saveScanRecord(
+            let savedRecord = try await recordStorageService.saveScanRecord(
                 username: user.username,
                 merchant: defaultMerchant.rawValue,
                 barcode: barcode,
@@ -440,9 +529,23 @@ class CameraViewModel: ObservableObject {
                 image: photo
             )
 
-            // Save successful
+            // ✅ EDGE CASE 4: Check cancellation after save
+            guard !Task.isCancelled else {
+                print("⚠️ [CameraVM] Save task cancelled after save")
+                resetToScanning()
+                return
+            }
+
+            // Save successful - show immediately (don't wait for cloud upload)
             scanState = .completed
             statusMessage = "✓ Saved successfully"
+
+            // ⭐ Milestone 2: Trigger cloud upload in background (don't block UI)
+            if CloudSyncService.shared.uploadMode != .manual {
+                Task.detached {
+                    await CloudSyncService.shared.addToQueue(savedRecord)
+                }
+            }
 
             // Increment session counter
             sessionScanCount += 1
@@ -450,12 +553,30 @@ class CameraViewModel: ObservableObject {
             // Haptic feedback - save success
             HapticFeedbackManager.shared.success()
 
-            // Reset after 1 second (auto-continue scanning)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.resetToScanning()
+            // ✅ FIX ISSUE 2: Record saved barcode to prevent immediate re-detection
+            recentlySavedBarcode = (barcode, Date())
+            print("✅ [CameraVM] Recorded recently saved barcode: \(barcode)")
+
+            // ✅ FIX ISSUE 2: Extend delay to 1.5 seconds to avoid immediate re-detection
+            // This gives user time to move camera away from the barcode
+            try? await Task.sleep(nanoseconds: 1_500_000_000)  // 1.5 seconds
+
+            // ✅ EDGE CASE 4 & 8: Check if cancelled during sleep
+            guard !Task.isCancelled else {
+                print("⚠️ [CameraVM] Save task cancelled during delay")
+                return
             }
 
+            resetToScanning()
+
         } catch {
+            // ✅ EDGE CASE 4: Even on error, check if cancelled
+            guard !Task.isCancelled else {
+                print("⚠️ [CameraVM] Save task cancelled during error handling")
+                resetToScanning()
+                return
+            }
+
             // Haptic feedback - save error
             HapticFeedbackManager.shared.error()
 
@@ -478,6 +599,7 @@ class CameraViewModel: ObservableObject {
     // MARK: - Save Record
 
     /// Save scan record
+    /// ✅ FIX P2-36: Run save operation in background to avoid blocking camera
     func saveScanRecord() async {
         guard let barcode = detectedBarcode,
               let photo = capturedPhoto,
@@ -487,11 +609,20 @@ class CameraViewModel: ObservableObject {
             return
         }
 
-        scanState = .saving
-        statusMessage = "Saving record..."
+        // Capture values needed for background task
+        let storeLocationValue = storeLocation
+        let merchantValue = merchant.rawValue
+        let username = user.username
 
+        // Update UI state on main actor
+        await MainActor.run {
+            scanState = .saving
+            statusMessage = "Saving record..."
+        }
+
+        // ✅ FIX P2-36: Perform heavy I/O operations in background
         do {
-            // Get GPS location (optional)
+            // Get GPS location (optional) - background operation
             var location: CLLocation?
             if permissionManager.locationAuthorized {
                 do {
@@ -503,26 +634,31 @@ class CameraViewModel: ObservableObject {
             }
 
             // Determine store name
-            let storeName = storeLocation.isEmpty ? merchant.rawValue : storeLocation
+            let storeName = storeLocationValue.isEmpty ? merchantValue : storeLocationValue
 
-            // Save using RecordStorageService (SwiftData)
-            _ = try await recordStorageService.saveScanRecord(
-                username: user.username,
-                merchant: merchant.rawValue,
+            // ✅ FIX P2-36: Save in background (RecordStorageService already uses @MainActor internally for SwiftData)
+            let savedRecord = try await recordStorageService.saveScanRecord(
+                username: username,
+                merchant: merchantValue,
                 barcode: barcode,
                 location: location,
-                storeLocation: storeLocation.isEmpty ? nil : storeName,
+                storeLocation: storeLocationValue.isEmpty ? nil : storeName,
                 image: photo
             )
 
-            // TODO: Phase 4 - Sync to Firebase
+            // ⭐ Milestone 2: Trigger cloud upload if auto-upload enabled (not manual mode)
+            if CloudSyncService.shared.uploadMode != .manual {
+                Task.detached { [savedRecord] in
+                    await CloudSyncService.shared.addToQueue(savedRecord)
+                }
+            }
 
-            // Complete
-            scanState = .completed
-            statusMessage = "Saved successfully"
-
-            // Haptic feedback - save success
-            HapticFeedbackManager.shared.success()
+            // Update UI state on main actor
+            await MainActor.run {
+                scanState = .completed
+                statusMessage = "Saved successfully"
+                HapticFeedbackManager.shared.success()
+            }
 
             // Reset after 2 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -531,7 +667,9 @@ class CameraViewModel: ObservableObject {
 
         } catch {
             // Haptic feedback - save error
-            HapticFeedbackManager.shared.error()
+            await MainActor.run {
+                HapticFeedbackManager.shared.error()
+            }
 
             errorMessage = "Save failed: \(error.localizedDescription)"
             resetToScanning()
@@ -548,6 +686,13 @@ class CameraViewModel: ObservableObject {
 
     /// Reset to scanning state
     private func resetToScanning() {
+        // ✅ EDGE CASE 7: Cancel any active save task when resetting
+        if let task = activeSaveTask {
+            print("⚠️ [CameraVM] Resetting camera, cancelling active save task")
+            task.cancel()
+            activeSaveTask = nil
+        }
+
         detectedBarcode = nil
         detectedSymbology = nil
         detectedBarcodeBoundingBox = nil  // Clear bounding box
@@ -560,7 +705,8 @@ class CameraViewModel: ObservableObject {
         duplicateInfo = nil
         errorMessage = nil
         currentDistanceLevel = nil
-        allowDuplicateOverride = false
+        // ✅ FIX ISSUE 1: Don't clear allowDuplicateOverride here
+        // It will be cleared when a new different barcode is detected (see handleBarcodeDetection)
 
         // Restart scanning
         startScanning()
@@ -568,6 +714,13 @@ class CameraViewModel: ObservableObject {
 
     /// Complete reset
     func reset() {
+        // ✅ EDGE CASE 7: Cancel any active save task on complete reset
+        if let task = activeSaveTask {
+            print("⚠️ [CameraVM] Complete reset, cancelling active save task")
+            task.cancel()
+            activeSaveTask = nil
+        }
+
         stopScanning()
         detectedBarcode = nil
         detectedSymbology = nil
@@ -584,6 +737,7 @@ class CameraViewModel: ObservableObject {
         currentDistanceLevel = nil
         lastDetectedBarcodeData = nil
         allowDuplicateOverride = false
+        recentlySavedBarcode = nil  // ✅ Clear recently saved barcode tracking
         sessionScanCount = 0
         barcodeDetector.reset()
     }

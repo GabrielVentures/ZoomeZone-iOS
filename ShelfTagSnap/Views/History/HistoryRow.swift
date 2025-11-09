@@ -81,6 +81,9 @@ struct HistoryRow: View {
 
             Spacer()
 
+            // Upload status icon (Milestone 2)
+            uploadStatusIcon
+
             // Arrow indicator
 
             Image(systemName: "chevron.right")
@@ -125,6 +128,9 @@ struct HistoryRow: View {
             }
 
             Spacer()
+
+            // Upload status icon (Milestone 2)
+            uploadStatusIcon
 
             // Arrow indicator
 
@@ -223,6 +229,38 @@ struct HistoryRow: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
+        }
+    }
+
+    // MARK: - Upload Status Icon (Milestone 2)
+
+    /// Upload status icon
+    private var uploadStatusIcon: some View {
+        Group {
+            switch record.uploadStatus {
+            case .pending:
+                Image(systemName: "clock")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .accessibilityLabel("Pending upload")
+
+            case .uploading:
+                ProgressView()
+                    .scaleEffect(0.7)
+                    .accessibilityLabel("Uploading")
+
+            case .synced:
+                Image(systemName: "checkmark.icloud.fill")
+                    .font(.caption)
+                    .foregroundColor(.green)
+                    .accessibilityLabel("Uploaded")
+
+            case .failed:
+                Image(systemName: "exclamationmark.icloud")
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .accessibilityLabel("Upload failed")
+            }
         }
     }
 

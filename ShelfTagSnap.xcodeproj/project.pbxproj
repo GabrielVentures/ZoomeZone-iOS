@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F0AB06F2EBF9D90000B879C /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 8F0AB06E2EBF9D90000B879C /* Kingfisher */; };
 		8F2EEF3C2EA9E8D400CE0F89 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF3B2EA9E8D400CE0F89 /* FirebaseAuth */; };
 		8F2EEF3E2EA9E8D400CE0F89 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF3D2EA9E8D400CE0F89 /* FirebaseCore */; };
 		8F2EEF402EA9E8D400CE0F89 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8F2EEF3F2EA9E8D400CE0F89 /* FirebaseCrashlytics */; };
@@ -66,6 +67,7 @@
 				8F2EEF3E2EA9E8D400CE0F89 /* FirebaseCore in Frameworks */,
 				8F2EEF422EA9E8D400CE0F89 /* FirebaseDatabase in Frameworks */,
 				8F2EEF442EA9E8D400CE0F89 /* FirebaseFirestore in Frameworks */,
+				8F0AB06F2EBF9D90000B879C /* Kingfisher in Frameworks */,
 				8F2EEF3C2EA9E8D400CE0F89 /* FirebaseAuth in Frameworks */,
 				8F2EEF462EA9E8D400CE0F89 /* FirebaseStorage in Frameworks */,
 				8F4CA9732EAB4E77007748BB /* ZIPFoundation in Frameworks */,
@@ -89,12 +91,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		8F0AB06D2EBF9D90000B879C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		8F0AEA902EA9237E0062C04B = {
 			isa = PBXGroup;
 			children = (
 				8F0AEA9B2EA9237E0062C04B /* ShelfTagSnap */,
 				8F0AEAA92EA9237F0062C04B /* ShelfTagSnapTests */,
 				8F0AEAB32EA923800062C04B /* ShelfTagSnapUITests */,
+				8F0AB06D2EBF9D90000B879C /* Frameworks */,
 				8F0AEA9A2EA9237E0062C04B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -136,6 +146,7 @@
 				8F2EEF432EA9E8D400CE0F89 /* FirebaseFirestore */,
 				8F2EEF452EA9E8D400CE0F89 /* FirebaseStorage */,
 				8F4CA9722EAB4E77007748BB /* ZIPFoundation */,
+				8F0AB06E2EBF9D90000B879C /* Kingfisher */,
 			);
 			productName = ShelfTagSnap;
 			productReference = 8F0AEA992EA9237E0062C04B /* Zoom Zone.app */;
@@ -222,6 +233,7 @@
 			packageReferences = (
 				8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				8F4CA9712EAB4E77007748BB /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				8F0AB06C2EBF6A50000B879C /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8F0AEA9A2EA9237E0062C04B /* Products */;
@@ -612,6 +624,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		8F0AB06C2EBF6A50000B879C /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "git@github.com:onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.6.1;
+			};
+		};
 		8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -631,6 +651,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		8F0AB06E2EBF9D90000B879C /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F0AB06C2EBF6A50000B879C /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
 		8F2EEF3B2EA9E8D400CE0F89 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8F2EEF3A2EA9E8D400CE0F89 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

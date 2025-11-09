@@ -9,6 +9,7 @@
 import SwiftUI
 import SwiftData
 import FirebaseCore
+import Kingfisher
 
 /// App /// App entry point
 @main
@@ -33,6 +34,9 @@ struct ShelfTagSnapApp: App {
         // Configure appearance
         configureAppearance()
 
+        // ✅ Configure Kingfisher for image caching
+        configureKingfisher()
+
         // Initialize SwiftData (already initialized in service)
         print("[App] ✅ SwiftData initialized")
     }
@@ -46,6 +50,28 @@ struct ShelfTagSnapApp: App {
                 .environmentObject(permissionManager)
                 .modelContainer(swiftDataService.container)
                 .preferredColorScheme(.light) // Force light mode for now
+                .task {
+                    // ✅ FIX P0-8: Validate and fix inconsistent upload states on app start
+                    await validateDataConsistency()
+                }
+        }
+    }
+
+    // MARK: - Startup Tasks
+
+    /// Validate data consistency on app startup
+    /// ✅ FIX P0-8: Check and fix any inconsistent upload states
+    @MainActor
+    private func validateDataConsistency() async {
+        do {
+            let result = try await RecordStorageService.shared.validateAndFixUploadStates()
+            if result.fixed > 0 {
+                print("⚠️ [App] Fixed \(result.fixed) inconsistent records: \(result.inconsistent)")
+            } else {
+                print("✅ [App] All upload states are consistent")
+            }
+        } catch {
+            print("❌ [App] Failed to validate upload states: \(error)")
         }
     }
 
@@ -73,5 +99,29 @@ struct ShelfTagSnapApp: App {
 
         UITabBar.appearance().standardAppearance = tabBarAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+    }
+
+    /// Configure Kingfisher image caching
+    /// ✅ FIX: Configure memory-only caching for Cloud images
+    private func configureKingfisher() {
+        // Get shared cache
+        let cache = KingfisherManager.shared.cache
+
+        // Memory cache configuration
+        // 50MB memory cache limit (sufficient for ~100-200 cloud images)
+        cache.memoryStorage.config.totalCostLimit = 50 * 1024 * 1024  // 50MB
+
+        // Expire memory cache after 5 minutes of inactivity
+        cache.memoryStorage.config.expiration = .seconds(300)
+
+        // Disk cache configuration
+        // Disable disk cache for cloud images (save storage space)
+        // Individual views use .cacheMemoryOnly() modifier
+        cache.diskStorage.config.sizeLimit = 0  // Disable disk cache globally
+
+        // Download timeout configuration
+        KingfisherManager.shared.downloader.downloadTimeout = 30.0  // 30 seconds timeout
+
+        print("✅ [App] Kingfisher configured: Memory=50MB, Disk=Disabled, Timeout=30s")
     }
 }

@@ -132,35 +132,43 @@ struct MainTabView: View {
 
     // MARK: - State
 
-    @State private var selectedTab: Tab = .camera
+    @State private var selectedTab: Tab = .tasks
 
-    // MARK: - Tab Enum
+    // MARK: - Tab Enum (Milestone 2: 4 Tab Architecture)
 
     enum Tab {
-        case camera
-        case history
-        case settings
+        case tasks      // Task list (previously camera)
+        case local      // Local history (previously history)
+        case cloud      // ⭐ NEW: Cloud backup
+        case settings   // Settings
     }
 
     // MARK: - Body
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Task list
+            // 1️⃣ Task list
             TaskListView()
                 .tabItem {
                     Label(Strings.TabBar.tasks, systemImage: "list.bullet.clipboard")
                 }
-                .tag(Tab.camera)
+                .tag(Tab.tasks)
 
-            // Scan history
-            HistoryListView()
+            // 2️⃣ Local history (Milestone 2: Renamed from HistoryListView)
+            LocalHistoryView()
                 .tabItem {
-                    Label(Strings.TabBar.history, systemImage: "clock.arrow.circlepath")
+                    Label("Local", systemImage: "internaldrive")
                 }
-                .tag(Tab.history)
+                .tag(Tab.local)
 
-            // Settings
+            // 3️⃣ Cloud backup (Milestone 2: NEW)
+            CloudBackupView()
+                .tabItem {
+                    Label("Cloud", systemImage: "icloud")
+                }
+                .tag(Tab.cloud)
+
+            // 4️⃣ Settings
             SettingsView()
                 .tabItem {
                     Label(Strings.TabBar.settings, systemImage: "gearshape")
@@ -230,6 +238,17 @@ struct SettingsView: View {
 
                 // Storage management
                 storageSection
+
+                // Cloud sync settings (Milestone 2)
+                Section {
+                    NavigationLink {
+                        CloudSyncSettingsView()
+                    } label: {
+                        Label("Cloud Sync", systemImage: "icloud.and.arrow.up")
+                    }
+                } header: {
+                    Text("Cloud")
+                }
 
                 // App settings
                 Section {
