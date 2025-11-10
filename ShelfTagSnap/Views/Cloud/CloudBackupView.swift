@@ -78,15 +78,8 @@ struct CloudBackupView: View {
     // MARK: - Loading View
 
     private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.2)
-
-            Text("Loading cloud records...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        CloudListSkeleton(itemCount: 8)
+            .background(Color(.systemGroupedBackground))
     }
 
     // MARK: - Empty View
@@ -303,7 +296,7 @@ struct CloudRecordRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Thumbnail - ✅ Using Kingfisher for image caching
+            // Thumbnail - ✅ Using Kingfisher for image caching with disk cache
             KFImage(URL(string: record.imageUrl))
                 .placeholder {
                     ProgressView()
@@ -313,7 +306,6 @@ struct CloudRecordRow: View {
                     print("❌ [Kingfisher] Failed to load image for record \(record.id): \(error)")
                 }
                 .retry(maxCount: 3, interval: .seconds(1))
-                .cacheMemoryOnly()  // Memory-only cache for cloud images to save disk space
                 .fade(duration: 0.25)
                 .resizable()
                 .scaledToFill()
@@ -322,24 +314,48 @@ struct CloudRecordRow: View {
 
             // Information
             VStack(alignment: .leading, spacing: 6) {
-                // Merchant and barcode
+                // SKU and Store Location
                 HStack(spacing: 8) {
-                    Text(record.merchant)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                    // SKU (Shelf Tag ID)
+                    HStack(spacing: 4) {
+                        Image(systemName: "barcode.viewfinder")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
 
-                    Image(systemName: "barcode.viewfinder")
-                        .font(.caption2)
-                        .foregroundColor(.blue)
+                        Text("SKU:")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
 
-                    Text(record.displayBarcode)
-                        .font(.caption)
-                        .fontDesign(.monospaced)
-                        .foregroundColor(.secondary)
+                        Text(record.displayBarcode)
+                            .font(.caption)
+                            .fontDesign(.monospaced)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.blue)
+                    }
+
+                    // Store Location (only if not unknown/walmart)
+                    if let storeLocation = record.storeLocation,
+                       !storeLocation.isEmpty,
+                       !storeLocation.lowercased().contains("unknown"),
+                       !storeLocation.lowercased().contains("walmart") {
+                        Text("|")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 2) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+
+                            Text(storeLocation)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
 
-                // AI Result preview
+                // AI Result preview (Product Title)
                 if let aiResult = record.aiResult, let title = aiResult.title {
                     Text(title)
                         .font(.caption)

@@ -20,38 +20,22 @@ struct CloudRecordDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var region: MKCoordinateRegion?
+    @State private var isLoading: Bool = true
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Large image
-                    imageSection
+            ZStack {
+                // Real content - always render so image can load
+                contentView
+                    .opacity(isLoading ? 0 : 1)
 
-                    // AI Result Card (Purple theme)
-                    if let aiResult = record.aiResult {
-                        aiResultCard(aiResult)
-                    } else if record.aiPending {
-                        aiPendingCard
-                    } else if record.aiFailed {
-                        aiFailedCard
-                    }
-
-                    // Basic information
-                    basicInfoSection
-
-                    // Location section
-                    if record.hasLocation {
-                        locationSection
-                    }
-
-                    // Metadata section
-                    metadataSection
+                // Skeleton loading view - overlay on top while loading
+                if isLoading {
+                    CloudDetailSkeleton()
+                        .transition(.opacity)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 20)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Record Detail")
@@ -72,10 +56,43 @@ struct CloudRecordDetailView: View {
         }
     }
 
+    // MARK: - Content View
+
+    private var contentView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Large image
+                imageSection
+
+                // AI Result Card (Purple theme)
+                if let aiResult = record.aiResult {
+                    aiResultCard(aiResult)
+                } else if record.aiPending {
+                    aiPendingCard
+                } else if record.aiFailed {
+                    aiFailedCard
+                }
+
+                // Basic information
+                basicInfoSection
+
+                // Location section
+                if record.hasLocation {
+                    locationSection
+                }
+
+                // Metadata section
+                metadataSection
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
+        }
+    }
+
     // MARK: - Image Section
 
     private var imageSection: some View {
-        // ✅ Using Kingfisher for image caching
+        // ✅ Using Kingfisher for image caching with disk cache
         KFImage(URL(string: record.imageUrl))
             .placeholder {
                 Rectangle()
@@ -85,11 +102,21 @@ struct CloudRecordDetailView: View {
                         ProgressView()
                     )
             }
+            .onSuccess { result in
+                // Hide skeleton when image loads successfully
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isLoading = false
+                }
+                print("✅ [Kingfisher] Image loaded for record \(record.id ?? "unknown")")
+            }
             .onFailure { error in
+                // Hide skeleton even if image fails to load
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isLoading = false
+                }
                 print("❌ [Kingfisher] Failed to load image for record \(record.id ?? "unknown"): \(error)")
             }
             .retry(maxCount: 3, interval: .seconds(1))
-            .cacheMemoryOnly()  // Memory-only cache for cloud images to save disk space
             .fade(duration: 0.25)
             .resizable()
             .scaledToFit()
@@ -121,14 +148,14 @@ struct CloudRecordDetailView: View {
 
             Divider()
 
-            // Title
+            // Product Title
             if let title = aiResult.title, !title.isEmpty {
                 infoRow(label: "Product", value: title, icon: "tag.fill")
             }
 
-            // Price
+            // Total Price
             if let price = aiResult.price, !price.isEmpty {
-                infoRow(label: "Price", value: price, icon: "dollarsign.circle.fill")
+                infoRow(label: "Total Price", value: price, icon: "dollarsign.circle.fill")
             }
 
             // Unit Price
@@ -136,14 +163,19 @@ struct CloudRecordDetailView: View {
                 infoRow(label: "Unit Price", value: unitPrice, icon: "chart.bar.fill")
             }
 
-            // Size
-            if let size = aiResult.size, !size.isEmpty {
-                infoRow(label: "Size", value: size, icon: "ruler.fill")
+            // Count
+            if let count = aiResult.count {
+                infoRow(label: "Count", value: "\(count)", icon: "number.circle.fill")
             }
 
-            // Category
-            if let category = aiResult.category, !category.isEmpty {
-                infoRow(label: "Category", value: category, icon: "square.grid.2x2")
+            // Unit
+            if let unit = aiResult.unit, !unit.isEmpty {
+                infoRow(label: "Unit", value: unit, icon: "scalemass.fill")
+            }
+
+            // Tag Date (Label Date)
+            if let labelDate = aiResult.labelDate, !labelDate.isEmpty {
+                infoRow(label: "Tag Date", value: labelDate, icon: "calendar.circle.fill")
             }
 
             // Brand
@@ -292,11 +324,8 @@ struct CloudRecordDetailView: View {
 
             Divider()
 
-            // Merchant
-            infoRow(label: "Merchant", value: record.merchant, icon: "building.2.fill")
-
-            // Shelf Tag Barcode (preferred display)
-            infoRow(label: "Shelf Tag", value: record.displayBarcode, icon: "barcode.viewfinder")
+            // SKU (Shelf Tag Barcode)
+            infoRow(label: "SKU", value: record.displayBarcode, icon: "barcode.viewfinder")
 
             // Full UPC Barcode (if available and different)
             if let fullBarcode = record.barcodeFull, fullBarcode != record.displayBarcode {
@@ -449,18 +478,4 @@ struct CloudRecordDetailView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         )
     }
-}
-
-// MARK: - Preview
-
-#Preview("With AI Result") {
-    CloudRecordDetailView(record: .sample)
-}
-
-#Preview("AI Pending") {
-    CloudRecordDetailView(record: .samplePending)
-}
-
-#Preview("AI Failed") {
-    CloudRecordDetailView(record: .sampleFailed)
 }

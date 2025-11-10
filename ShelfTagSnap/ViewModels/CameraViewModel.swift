@@ -485,9 +485,10 @@ class CameraViewModel: ObservableObject {
             return
         }
 
-        // Use preselected store name or default
-        let storeName = preselectedStoreName ?? "Unknown Store"
-        let defaultMerchant = Merchant.walmart  // Default merchant
+        // Use preselected store name or empty string
+        let storeName = preselectedStoreName ?? ""
+        // Use selected merchant, or empty string if not selected
+        let merchantName = selectedMerchant?.rawValue ?? ""
 
         // ✅ EDGE CASE 10: Set state to .saving (blocks new detections)
         scanState = .saving
@@ -522,7 +523,7 @@ class CameraViewModel: ObservableObject {
             // Save using RecordStorageService (SwiftData)
             let savedRecord = try await recordStorageService.saveScanRecord(
                 username: user.username,
-                merchant: defaultMerchant.rawValue,
+                merchant: merchantName,
                 barcode: barcode,
                 location: location,
                 storeLocation: storeName,

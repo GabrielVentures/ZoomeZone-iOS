@@ -131,6 +131,12 @@ class CloudBackupViewModel: ObservableObject {
 
     /// Load initial records (first page)
     func loadRecords() async {
+        // Prevent multiple simultaneous loads
+        guard loadState != .loading else {
+            print("⚠️ [CloudBackupVM] Already loading, skipping duplicate load request")
+            return
+        }
+
         loadState = .loading
         currentPage = 0
         hasMoreRecords = true
@@ -143,14 +149,17 @@ class CloudBackupViewModel: ObservableObject {
 
             print("☁️ [CloudBackupVM] Loading first page for user: \(userId)")
 
-            // Query Firestore
+            // Query Firestore with timeout protection
             let query = firestore
                 .collection("scan_records")
                 .whereField("User_ID", isEqualTo: userId)
                 .order(by: "Upload_Timestamp", descending: true)
                 .limit(to: pageSize)
 
-            let snapshot = try await query.getDocuments()
+            // Add timeout protection (15 seconds)
+            let snapshot = try await withTimeout(seconds: 15) {
+                try await query.getDocuments()
+            }
 
             // Parse documents
             let cloudRecords = try parseDocuments(snapshot.documents)
@@ -159,10 +168,15 @@ class CloudBackupViewModel: ObservableObject {
             lastDocumentSnapshot = snapshot.documents.last
             hasMoreRecords = snapshot.documents.count >= pageSize
 
+            // ✅ ALWAYS set to loaded, even if no records
             loadState = .loaded
 
             print("✅ [CloudBackupVM] Loaded \(cloudRecords.count) records")
 
+        } catch is CancellationError {
+            // Task was cancelled, reset to idle
+            loadState = .idle
+            print("⚠️ [CloudBackupVM] Load cancelled")
         } catch {
             let errorMsg = "Failed to load cloud records: \(error.localizedDescription)"
             errorMessage = errorMsg
@@ -330,6 +344,36 @@ enum CloudBackupError: LocalizedError {
         case .firestoreError(let message):
             return "Firestore error: \(message)"
         }
+    }
+}
+
+// MARK: - Timeout Helper
+
+/// Execute an async operation with a timeout
+private func withTimeout<T>(seconds: TimeInterval, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        // Add the actual operation
+        group.addTask {
+            try await operation()
+        }
+
+        // Add timeout task
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TimeoutError()
+        }
+
+        // Return the first result (either the operation or timeout)
+        let result = try await group.next()!
+        group.cancelAll()
+        return result
+    }
+}
+
+/// Timeout error
+private struct TimeoutError: LocalizedError {
+    var errorDescription: String? {
+        return "Operation timed out. Please check your internet connection."
     }
 }
 

@@ -102,26 +102,28 @@ struct ShelfTagSnapApp: App {
     }
 
     /// Configure Kingfisher image caching
-    /// ✅ FIX: Configure memory-only caching for Cloud images
+    /// ✅ Optimized: Enable disk cache for better user experience
     private func configureKingfisher() {
         // Get shared cache
         let cache = KingfisherManager.shared.cache
 
         // Memory cache configuration
-        // 50MB memory cache limit (sufficient for ~100-200 cloud images)
+        // 50MB memory cache limit (sufficient for ~100-200 cloud images in current session)
         cache.memoryStorage.config.totalCostLimit = 50 * 1024 * 1024  // 50MB
 
-        // Expire memory cache after 5 minutes of inactivity
-        cache.memoryStorage.config.expiration = .seconds(300)
+        // Expire memory cache after 10 minutes of inactivity
+        cache.memoryStorage.config.expiration = .seconds(600)
 
         // Disk cache configuration
-        // Disable disk cache for cloud images (save storage space)
-        // Individual views use .cacheMemoryOnly() modifier
-        cache.diskStorage.config.sizeLimit = 0  // Disable disk cache globally
+        // Enable disk cache for persistent storage across app restarts
+        cache.diskStorage.config.sizeLimit = 800 * 1024 * 1024  // 200MB disk cache
+
+        // Expire disk cache after 7 days
+        cache.diskStorage.config.expiration = .days(7)
 
         // Download timeout configuration
         KingfisherManager.shared.downloader.downloadTimeout = 30.0  // 30 seconds timeout
 
-        print("✅ [App] Kingfisher configured: Memory=50MB, Disk=Disabled, Timeout=30s")
+        print("✅ [App] Kingfisher configured: Memory=50MB (10min), Disk=200MB (7days), Timeout=30s")
     }
 }

@@ -139,8 +139,20 @@ struct AIResult: Codable {
     /// Product title
     var title: String?
 
-    /// Product price
+    /// Product price (total price)
     var price: String?
+
+    /// Unit price (e.g., "$0.044/oz")
+    var unitPrice: String?
+
+    /// Package quantity (calculated from price/unit_price)
+    var count: Int?
+
+    /// Product size/weight per unit
+    var size: String?
+
+    /// Measurement unit (e.g., "oz", "ct", "PK")
+    var unit: String?
 
     /// Product category
     var category: String?
@@ -148,11 +160,11 @@ struct AIResult: Codable {
     /// Product brand
     var brand: String?
 
-    /// Product size/weight
-    var size: String?
+    /// Tag print date (YYYY-MM-DD)
+    var labelDate: String?
 
-    /// Unit price (e.g., "$0.044/oz")
-    var unitPrice: String?
+    /// Expiration date (YYYY-MM-DD)
+    var expirationDate: String?
 
     /// Promotion text (e.g., "Buy 2 Get 1 Free")
     var promotion: String?
@@ -193,13 +205,17 @@ struct AIResult: Codable {
     var metadata: [String: String]?
 
     enum CodingKeys: String, CodingKey {
-        case title = "product_name"      // Match Cloud Function output
+        case title = "product_name"
         case price = "price"
+        case unitPrice = "unit_price"
+        case count = "count"
+        case size = "size"                    // Fixed: was "weight_or_count"
+        case unit = "unit"
         case category = "category"
         case brand = "brand"
-        case size = "weight_or_count"    // Match Cloud Function output
-        case unitPrice = "unit_price"    // Match Cloud Function output
-        case promotion = "promotion"     // Match Cloud Function output
+        case labelDate = "label_date"
+        case expirationDate = "expiration_date"
+        case promotion = "promotion"
         case description = "description"
         case confidence = "confidence"
         case processedAt = "processed_at"
@@ -336,9 +352,8 @@ extension CloudScanRecord {
             aiResult: AIResult(
                 title: "Organic Bananas",
                 price: "$2.99",
-                category: "Fresh Produce",
+                size: "3 lbs", category: "Fresh Produce",
                 brand: "Great Value",
-                size: "3 lbs",
                 description: "Fresh organic bananas from Ecuador",
                 confidence: "0.92",
                 processedAt: Timestamp(date: Date()),
@@ -396,9 +411,8 @@ extension AIResult {
         AIResult(
             title: "Organic Milk",
             price: "$4.99",
-            category: "Dairy",
+            size: "1 Gallon", category: "Dairy",
             brand: "Horizon Organic",
-            size: "1 Gallon",
             description: "Organic whole milk",
             confidence: "0.88",
             processedAt: Timestamp(date: Date()),
